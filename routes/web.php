@@ -20,19 +20,14 @@ use App\Http\Controllers\DashboardController;
 |
 */
 
-// Pagina di benvenuto
-#Route::get('/', function () {
-    #return view('welcome');
-#});
-
-Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
-
 // Dashboard principale
-Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
 // Rotte per la gestione delle risorse
 Route::resource('resources', ResourceController::class);
 Route::post('/resources/calculate-costs', [ResourceController::class, 'calculateCosts'])->name('resources.calculate-costs');
+Route::get('/resources/hours-availability', [ResourceController::class, 'hoursAvailability'])->name('resources.hours-availability');
+Route::post('/resources/{resource}/fix-legacy-hours', [ResourceController::class, 'fixLegacyHoursData'])->name('resources.fix-legacy-hours');
 
 // Rotte per la gestione dei clienti
 Route::resource('clients', ClientController::class);
@@ -49,18 +44,15 @@ Route::get('/areas/by-project/{project}', [AreaController::class, 'byProject'])-
 Route::resource('activities', ActivityController::class);
 Route::get('/activities/by-project/{project}', [ActivityController::class, 'byProject'])->name('activities.by-project');
 Route::get('/activities/by-area/{area}', [ActivityController::class, 'byArea'])->name('activities.by-area');
+Route::put('/activities/{activity}/status', [ActivityController::class, 'updateStatus'])->name('activities.updateStatus');
 
 // Rotte per la gestione dei task
 Route::resource('tasks', TaskController::class);
 Route::post('/tasks/reorder', [TaskController::class, 'reorder'])->name('tasks.reorder');
 Route::put('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
-Route::post('/tasks/reorder', [TaskController::class, 'reorder'])->name('tasks.reorder');
 Route::post('/tasks/{task}/complete', [TaskController::class, 'complete'])->name('tasks.complete');
 Route::post('/tasks/{task}/start', [TaskController::class, 'start'])->name('tasks.start');
 Route::get('/tasks/by-activity/{activity}', [TaskController::class, 'byActivity'])->name('tasks.by-activity');
-
-// Nuova rotta per aggiornare i minuti effettivi dal cronometro
-Route::post('/tasks/{task}/update-timer', [TaskController::class, 'updateTaskTimer'])->name('tasks.updateTimer');
 
 // Rotte per AJAX e API interne all'applicazione
 Route::get('/api/resources-by-project/{project}', [ResourceController::class, 'getByProject'])->name('api.resources-by-project');
@@ -75,31 +67,12 @@ Route::put('/api/tasks/{task}/status', [TaskController::class, 'updateStatusApi'
 Route::post('/api/tasks/reorder', [TaskController::class, 'reorderTasks'])->name('api.tasks.reorder');
 
 // Se prevedi l'autenticazione, puoi aggiungere il middleware auth
-// Per proteggere le rotte che richiedono autenticazione
 Route::middleware(['auth'])->group(function () {
     // Rotte protette che richiedono autenticazione
 });
 
-Route::put('/activities/{activity}/status', [ActivityController::class, 'updateStatus'])->name('activities.updateStatus');
-
-Route::get('resources/hours-availability', [ResourceController::class, 'hoursAvailability'])->name('resources.hours-availability');
-
-Route::post('/resources/{resource}/fix-legacy-hours', [ResourceController::class, 'fixLegacyHoursData'])->name('resources.fix-legacy-hours');
-
-// Auth::routes(); // Decommentare se utilizzi Laravel UI per l'autenticazione
+// Rotte di autenticazione standard di Laravel
 Auth::routes();
 
+// Rotta home (se necessaria)
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
-
-// Rotte per la gestione degli utenti (solo per Admin)
-Route::middleware(['auth', 'role:admin'])->group(function () {
-    Route::resource('users', \App\Http\Controllers\UserController::class);
-});
-
-Route::put('/activities/{activity}/status', [ActivityController::class, 'updateStatus'])->name('activities.updateStatus');
-
-Route::get('resources/hours-availability', [ResourceController::class, 'hoursAvailability'])->name('resources.hours-availability');
-
-Route::post('/resources/{resource}/fix-legacy-hours', [ResourceController::class, 'fixLegacyHoursData'])->name('resources.fix-legacy-hours');
-
-Route::get('/users/profile', [UserController::class, 'profile'])->name('users.profile');
