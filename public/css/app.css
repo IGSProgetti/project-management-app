@@ -1,0 +1,418 @@
+:root {
+    /* Colori principali */
+    --primary-color: #2196F3;
+    --secondary-color: #f44336;
+    --success-color: #4CAF50;
+    --warning-color: #FFC107;
+    
+    /* Colori di sfondo */
+    --background-color: #f5f6fa;
+    --card-background: white;
+    
+    /* Colori testo */
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    
+    /* Dimensioni layout */
+    --sidebar-width: 250px;
+    --header-height: 60px;
+    --main-padding: 20px;
+    
+    /* Ombre */
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+    
+    /* Border radius */
+    --border-radius: 8px;
+}
+
+/* Layout principale */
+body {
+    background-color: var(--background-color);
+    color: var(--text-primary);
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    background: var(--card-background);
+    box-shadow: var(--shadow-sm);
+    padding: 20px;
+    z-index: 100;
+}
+
+.logo {
+    padding: 20px 0;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 20px;
+}
+
+.logo h2 {
+    color: var(--primary-color);
+    margin: 0;
+}
+
+.nav-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.nav-menu li {
+    margin-bottom: 10px;
+}
+
+.nav-menu a {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    color: var(--text-primary);
+    border-radius: var(--border-radius);
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.nav-menu a:hover,
+.nav-menu a.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.nav-menu a i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    padding: var(--main-padding);
+}
+
+/* Header */
+.header {
+    height: var(--header-height);
+    background: var(--card-background);
+    padding: 0 var(--main-padding);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--main-padding);
+    border-radius: var(--border-radius);
+}
+
+.page-title h1 {
+    font-size: 1.5rem;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+/* Content Container */
+.content-container {
+    padding: 20px 0;
+}
+
+/* Cards */
+.card {
+    margin-bottom: 20px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    border: none;
+}
+
+.card-header {
+    background-color: transparent;
+    border-bottom: 1px solid #eee;
+    padding: 15px 20px;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* Tables */
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #eee;
+    font-weight: 600;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-control, .form-select {
+    border-radius: var(--border-radius);
+    border: 1px solid #ddd;
+    padding: 0.5rem 0.75rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.25);
+}
+
+/* Buttons */
+.btn {
+    border-radius: var(--border-radius);
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #1976D2;
+    border-color: #1976D2;
+}
+
+.btn-danger {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+/* Badges */
+.badge {
+    font-weight: 500;
+    padding: 0.4em 0.6em;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 70px;
+        padding: 15px 5px;
+    }
+    
+    .logo h2 {
+        display: none;
+    }
+    
+    .nav-menu a {
+        justify-content: center;
+        padding: 12px 5px;
+    }
+    
+    .nav-menu a i {
+        margin-right: 0;
+        font-size: 1.2rem;
+    }
+    
+    .nav-menu a span {
+        display: none;
+    }
+    
+    .main-content {
+        margin-left: 70px;
+    }
+}
+
+
+
+
+
+
+/* Stili aggiuntivi per la visualizzazione date nei progetti */
+
+.project-dates {
+    padding: 10px 15px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.project-dates strong {
+    color: #333;
+    margin-right: 5px;
+}
+
+/* Migliora l'aspetto delle date nella vista lista */
+.table td.date-cell {
+    white-space: nowrap;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* Stili generali per i progetti */
+.project-card {
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+}
+
+.project-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.project-header {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid #f0f0f0;
+    background: #f8f9fa;
+}
+
+.project-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #2196F3;
+}
+
+.project-client {
+    padding: 10px 15px;
+    font-weight: 500;
+    color: #666;
+    background: #fff;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.project-description {
+    padding: 15px;
+    flex-grow: 1;
+    color: #333;
+    line-height: 1.5;
+}
+
+.project-footer {
+    padding: 15px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8f9fa;
+}
+
+.project-cost, .project-resources {
+    font-weight: 500;
+}
+
+/* Stili per la vista a lista dei progetti */
+.projects-container.list-view .project-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.projects-container.list-view .project-table th {
+    background: #f8f9fa;
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #eee;
+}
+
+.projects-container.list-view .project-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+}
+
+.projects-container.list-view .project-name-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.projects-container.list-view .project-name {
+    font-weight: 500;
+    color: #2196F3;
+}
+
+.projects-container.list-view .project-description-sm {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 5px;
+}
+
+.projects-container.list-view .btn-group {
+    display: flex;
+    gap: 5px;
+}
+
+/* Paginazione */
+.pagination-controls {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.pagination {
+    display: flex;
+    gap: 5px;
+}
+
+.pagination-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dee2e6;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.pagination-btn.active {
+    background: #2196F3;
+    color: white;
+    border-color: #2196F3;
+}
+
+.pagination-btn:hover:not(.active):not([disabled]) {
+    background: #e3f2fd;
+}
+
+.pagination-btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
