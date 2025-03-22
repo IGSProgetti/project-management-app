@@ -10,35 +10,38 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css" rel="stylesheet">
+    <!-- Responsive CSS -->
+    <link href="{{ asset('css/responsive.css') }}" rel="stylesheet">
     
     <style>
         body {
             background-color: #f8f9fa;
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 15px;
         }
         .login-container {
             width: 100%;
             max-width: 420px;
-            padding: 15px;
+            margin: 0 auto;
         }
         .card {
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
         .card-header {
             background-color: #fff;
             border-bottom: 1px solid #eee;
             padding: 20px;
             text-align: center;
-            border-top-left-radius: 10px;
-            border-top-right-radius: 10px;
         }
         .card-header h3 {
             margin: 0;
             color: #333;
+            font-weight: 600;
         }
         .card-body {
             padding: 30px;
@@ -48,6 +51,8 @@
             border-color: #007bff;
             padding: 10px 20px;
             font-weight: 500;
+            width: 100%;
+            margin-top: 10px;
         }
         .btn-primary:hover {
             background-color: #0069d9;
@@ -56,11 +61,46 @@
         .form-control {
             padding: 12px;
             border-radius: 5px;
+            height: auto;
+        }
+        .form-label {
+            font-weight: 500;
+            margin-bottom: 8px;
         }
         .login-logo {
             max-width: 200px;
             margin-bottom: 20px;
         }
+        .app-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .form-check-label {
+            font-weight: normal;
+        }
+        .login-footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 576px) {
+            .card-header {
+                padding: 15px;
+            }
+            .card-body {
+                padding: 20px;
+            }
+            .app-title {
+                font-size: 20px;
+                margin-bottom: 15px;
+            }
+        }
+        
     </style>
 </head>
 <body>

@@ -12,6 +12,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+    <!-- Responsive CSS -->
+    <link href="{{ asset('css/responsive.css') }}" rel="stylesheet">
     
     @stack('styles')
 </head>
@@ -142,6 +144,8 @@
     <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
     <!-- Custom JavaScript -->
     <script src="{{ asset('js/app.js') }}"></script>
+    <!-- Responsive JavaScript -->
+    <script src="{{ asset('js/responsive.js') }}"></script>
     
     <!-- CSRF Token per AJAX -->
     <script>
