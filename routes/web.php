@@ -46,22 +46,23 @@ Route::get('/activities/by-project/{project}', [ActivityController::class, 'byPr
 Route::get('/activities/by-area/{area}', [ActivityController::class, 'byArea'])->name('activities.by-area');
 Route::put('/activities/{activity}/status', [ActivityController::class, 'updateStatus'])->name('activities.updateStatus');
 
-// Rotte per la gestione dei task
-Route::resource('tasks', TaskController::class);
+// Prima la rotta specifica timetracking
+Route::get('/tasks/timetracking', [TaskController::class, 'timeTracking'])->name('tasks.timetracking');
+
+// Poi eventuali altre rotte specifiche per i task
 Route::post('/tasks/reorder', [TaskController::class, 'reorder'])->name('tasks.reorder');
 Route::put('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
 Route::post('/tasks/{task}/complete', [TaskController::class, 'complete'])->name('tasks.complete');
 Route::post('/tasks/{task}/start', [TaskController::class, 'start'])->name('tasks.start');
 Route::get('/tasks/by-activity/{activity}', [TaskController::class, 'byActivity'])->name('tasks.by-activity');
+Route::post('/tasks/{task}/update-timer', [TaskController::class, 'updateTaskTimer'])->name('tasks.update-timer');
+
+// Poi la resource route (per ultima)
+Route::resource('tasks', TaskController::class);
 
 // Rotte per AJAX e API interne all'applicazione
 Route::get('/api/resources-by-project/{project}', [ResourceController::class, 'getByProject'])->name('api.resources-by-project');
 Route::get('/api/project-summary/{project}', [ProjectController::class, 'getSummary'])->name('api.project-summary');
-
-// Route per la vista Kanban (board)
-Route::get('/tasks/board', [TaskController::class, 'board'])->name('tasks.board');
-
-// Routes per le API della board
 Route::get('/api/tasks', [TaskController::class, 'getTasks'])->name('api.tasks');
 Route::put('/api/tasks/{task}/status', [TaskController::class, 'updateStatusApi'])->name('api.tasks.update-status');
 Route::post('/api/tasks/reorder', [TaskController::class, 'reorderTasks'])->name('api.tasks.reorder');

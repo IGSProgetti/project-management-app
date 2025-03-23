@@ -12,6 +12,9 @@
             <a href="{{ route('tasks.create') }}" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Nuovo Task
             </a>
+            <a href="{{ route('tasks.timetracking') }}" class="btn btn-secondary">
+                <i class="fas fa-chart-bar"></i> Gestione Tempi
+            </a>
         </div>
     </div>
 
