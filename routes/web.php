@@ -8,6 +8,7 @@ use App\Http\Controllers\AreaController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\CalendarController;
 
 /*
 |--------------------------------------------------------------------------
@@ -77,3 +78,7 @@ Auth::routes();
 
 // Rotta home (se necessaria)
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+
+// Rotte per il calendario
+Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+Route::get('/api/calendar/events', [CalendarController::class, 'getEvents'])->name('calendar.events');

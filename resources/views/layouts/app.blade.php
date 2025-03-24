@@ -67,6 +67,21 @@
                         Gestione Task
                     </a>
                 </li>
+                <li>
+<li>
+    <a href="{{ route('calendar.index') }}" class="nav-link {{ request()->routeIs('calendar.*') ? 'active' : '' }}">
+        <i class="fas fa-calendar-alt"></i>
+        Calendario
+    </a>
+</li>
+@if(auth()->check() && auth()->user()->isAdmin())
+<li>
+    <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') && !request()->routeIs('users.profile') ? 'active' : '' }}">
+        <i class="fas fa-user-cog"></i>
+        Gestione Utenti
+    </a>
+</li>
+@endif
                 @if(auth()->check() && auth()->user()->isAdmin())
                 <li>
                     <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') && !request()->routeIs('users.profile') ? 'active' : '' }}">
