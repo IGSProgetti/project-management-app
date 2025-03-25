@@ -24,25 +24,43 @@
 
     <div class="row">
         <div class="col-md-4">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5>Informazioni Area</h5>
-                </div>
-                <div class="card-body">
-                    <p><strong>Descrizione:</strong> {{ $area->description ?? 'Nessuna descrizione' }}</p>
-                    <p><strong>Progetto:</strong> <a href="{{ route('projects.show', $area->project_id) }}">{{ $area->project->name }}</a></p>
-                    <p><strong>Cliente:</strong> {{ $area->project->client->name }}</p>
-                    <p><strong>Numero di attività:</strong> {{ $area->activities->count() }}</p>
-                    <p><strong>Costo stimato:</strong> {{ number_format($area->total_estimated_cost, 2) }} €</p>
-                    <p><strong>Costo effettivo:</strong> {{ number_format($area->total_actual_cost, 2) }} €</p>
-                    
-                    <h6 class="mt-3">Progresso</h6>
-                    <div class="progress mb-2" style="height: 15px;">
-                        <div class="progress-bar" role="progressbar" style="width: {{ $area->progress_percentage }}%" aria-valuenow="{{ $area->progress_percentage }}" aria-valuemin="0" aria-valuemax="100">{{ $area->progress_percentage }}%</div>
-                    </div>
-                </div>
+        <div class="card mb-4">
+    <div class="card-header">
+        <h5>Informazioni Area</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Descrizione:</strong> {{ $area->description ?? 'Nessuna descrizione' }}</p>
+        <p><strong>Progetto:</strong> <a href="{{ route('projects.show', $area->project_id) }}">{{ $area->project->name }}</a></p>
+        <p><strong>Cliente:</strong> {{ $area->project->client->name }}</p>
+        <p><strong>Numero di attività:</strong> {{ $area->activities->count() }}</p>
+        
+        <div class="row mt-4">
+            <div class="col-md-4 text-center">
+                <h6>Minuti Stimati</h6>
+                <h3>{{ $area->estimated_minutes }}</h3>
+            </div>
+            <div class="col-md-4 text-center">
+                <h6>Minuti Effettivi</h6>
+                <h3>{{ $area->actual_minutes }}</h3>
+            </div>
+            <div class="col-md-4 text-center">
+                <h6>Minuti Rimanenti</h6>
+                <h3>{{ $area->remaining_estimated_minutes }}</h3>
             </div>
         </div>
+        
+        <h6 class="mt-3">Progresso</h6>
+        <div class="progress mb-2" style="height: 15px;">
+            <div class="progress-bar {{ $area->is_over_estimated ? 'bg-danger' : 'bg-success' }}" role="progressbar" style="width: {{ $area->progress_percentage }}%" aria-valuenow="{{ $area->progress_percentage }}" aria-valuemin="0" aria-valuemax="100">{{ $area->progress_percentage }}%</div>
+        </div>
+        
+        @if($area->is_over_estimated)
+            <div class="alert alert-warning mt-3">
+                <i class="fas fa-exclamation-triangle"></i> I minuti effettivi hanno superato quelli stimati!
+            </div>
+        @endif
+    </div>
+</div>
         
         <div class="col-md-8">
             <div class="card">

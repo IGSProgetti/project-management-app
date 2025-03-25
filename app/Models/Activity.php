@@ -150,39 +150,76 @@ class Activity extends Model
         }
         
         $this->save();
+        
+        // Aggiorna anche l'area associata
+        $this->updateParentArea();
     }
 
     /**
- * Update actual minutes based on task completion.
- */
-public function updateActualMinutesFromTasks()
-{
-    $totalTasks = $this->tasks()->count();
-    $completedTasks = $this->tasks()->where('status', 'completed')->get();
-    
-    if ($totalTasks === 0) {
-        return;
-    }
+     * Update actual minutes based on task completion.
+     */
+    public function updateActualMinutesFromTasks()
+    {
+        $totalTasks = $this->tasks()->count();
+        $completedTasks = $this->tasks()->where('status', 'completed')->get();
+        
+        if ($totalTasks === 0) {
+            return;
+        }
 
-    // Se i task hanno minuti effettivi specificati, usa quelli
-    $totalActualMinutes = 0;
-    foreach ($completedTasks as $task) {
-        if ($task->actual_minutes > 0) {
-            $totalActualMinutes += $task->actual_minutes;
-        } else {
-            // Altrimenti usa una proporzione dei minuti stimati dell'attività
-            $totalActualMinutes += isset($task->estimated_minutes) && $task->estimated_minutes > 0 
-                ? $task->estimated_minutes 
-                : $this->estimated_minutes / $totalTasks;
+        // Se i task hanno minuti effettivi specificati, usa quelli
+        $totalActualMinutes = 0;
+        foreach ($completedTasks as $task) {
+            if ($task->actual_minutes > 0) {
+                $totalActualMinutes += $task->actual_minutes;
+            } else {
+                // Altrimenti usa una proporzione dei minuti stimati dell'attività
+                $totalActualMinutes += isset($task->estimated_minutes) && $task->estimated_minutes > 0 
+                    ? $task->estimated_minutes 
+                    : $this->estimated_minutes / $totalTasks;
+            }
+        }
+        
+        // Aggiorna i minuti effettivi
+        $this->actual_minutes = round($totalActualMinutes);
+        
+        // Aggiorna il costo effettivo
+        $this->updateActualCost();
+        
+        $this->save();
+        
+        // Aggiorna anche l'area associata
+        $this->updateParentArea();
+    }
+    
+    /**
+     * Update parent area with actual minutes.
+     */
+    public function updateParentArea()
+    {
+        if ($this->area_id) {
+            $area = Area::find($this->area_id);
+            if ($area) {
+                $area->updateActualMinutesFromActivities();
+            }
         }
     }
     
-    // Aggiorna i minuti effettivi
-    $this->actual_minutes = round($totalActualMinutes);
+    /**
+     * Get the remaining estimated minutes for this activity.
+     */
+    public function getRemainingEstimatedMinutesAttribute()
+    {
+        $tasksEstimatedMinutes = $this->tasks()->sum('estimated_minutes');
+        return max(0, $this->estimated_minutes - $tasksEstimatedMinutes);
+    }
     
-    // Aggiorna il costo effettivo
-    $this->updateActualCost();
-    
-    $this->save();
-}
+    /**
+     * Get the remaining actual minutes for this activity.
+     */
+    public function getRemainingActualMinutesAttribute()
+    {
+        $tasksActualMinutes = $this->tasks()->sum('actual_minutes');
+        return max(0, $this->actual_minutes - $tasksActualMinutes);
+    }
 }

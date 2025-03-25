@@ -25,13 +25,26 @@ class ActivityController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
         $projects = Project::all();
         $areas = collect(); // Vuoto per default, verranno popolate via AJAX
         $resources = Resource::where('is_active', true)->get();
         
-        return view('activities.create', compact('projects', 'areas', 'resources'));
+        // Prepopola le aree se viene selezionato un progetto dalla URL
+        $selectedProjectId = $request->query('project_id');
+        if ($selectedProjectId) {
+            $areas = Area::where('project_id', $selectedProjectId)->get();
+        }
+        
+        // Preseleziona un'area se fornita dall'URL
+        $selectedAreaId = $request->query('area_id');
+        $selectedArea = null;
+        if ($selectedAreaId) {
+            $selectedArea = Area::find($selectedAreaId);
+        }
+        
+        return view('activities.create', compact('projects', 'areas', 'resources', 'selectedProjectId', 'selectedArea'));
     }
 
     /**
@@ -62,6 +75,13 @@ class ActivityController extends Controller
             if ($area && $area->project_id != $request->project_id) {
                 return redirect()->back()
                     ->with('error', 'L\'area selezionata non appartiene al progetto selezionato.')
+                    ->withInput();
+            }
+            
+            // Verifica se l'area ha abbastanza minuti disponibili
+            if ($area->remaining_estimated_minutes < $request->estimated_minutes) {
+                return redirect()->back()
+                    ->with('error', 'L\'area selezionata non ha abbastanza minuti disponibili. Disponibili: ' . $area->remaining_estimated_minutes)
                     ->withInput();
             }
         }
@@ -101,6 +121,14 @@ class ActivityController extends Controller
         $activity->hours_type = $request->hours_type;
         $activity->save();
 
+        // Se l'attività è associata a un'area, aggiorna i minuti effettivi dell'area
+        if ($activity->area_id) {
+            $area = Area::find($activity->area_id);
+            if ($area) {
+                $area->updateActualMinutesFromActivities();
+            }
+        }
+        
         return redirect()->route('activities.show', $activity->id)
             ->with('success', 'Attività creata con successo.');
     }
@@ -150,6 +178,9 @@ class ActivityController extends Controller
                 ->withInput();
         }
 
+        $activity = Activity::findOrFail($id);
+        $originalAreaId = $activity->area_id;
+        
         // Verifica che l'area appartenga al progetto
         if ($request->area_id) {
             $area = Area::find($request->area_id);
@@ -158,9 +189,15 @@ class ActivityController extends Controller
                     ->with('error', 'L\'area selezionata non appartiene al progetto selezionato.')
                     ->withInput();
             }
+            
+            // Verifica se l'area ha abbastanza minuti disponibili (solo se è un'area nuova o se sono aumentati i minuti stimati)
+            if (($request->area_id != $originalAreaId || $request->estimated_minutes > $activity->estimated_minutes) &&
+                $area->remaining_estimated_minutes < ($request->estimated_minutes - ($originalAreaId == $request->area_id ? $activity->estimated_minutes : 0))) {
+                return redirect()->back()
+                    ->with('error', 'L\'area selezionata non ha abbastanza minuti disponibili. Disponibili: ' . $area->remaining_estimated_minutes)
+                    ->withInput();
+            }
         }
-
-        $activity = Activity::findOrFail($id);
         
         // Calcola il costo stimato
         $resource = Resource::findOrFail($request->resource_id);
@@ -203,6 +240,29 @@ class ActivityController extends Controller
         }
         
         $activity->save();
+        
+        // Se è cambiata l'area, aggiorna i minuti di entrambe le aree
+        if ($originalAreaId != $request->area_id) {
+            if ($originalAreaId) {
+                $originalArea = Area::find($originalAreaId);
+                if ($originalArea) {
+                    $originalArea->updateActualMinutesFromActivities();
+                }
+            }
+            
+            if ($request->area_id) {
+                $newArea = Area::find($request->area_id);
+                if ($newArea) {
+                    $newArea->updateActualMinutesFromActivities();
+                }
+            }
+        } else if ($activity->area_id) {
+            // Aggiorna i minuti dell'area corrente
+            $area = Area::find($activity->area_id);
+            if ($area) {
+                $area->updateActualMinutesFromActivities();
+            }
+        }
 
         return redirect()->route('activities.show', $activity->id)
             ->with('success', 'Attività aggiornata con successo.');
@@ -214,11 +274,20 @@ class ActivityController extends Controller
     public function destroy(string $id)
     {
         $activity = Activity::findOrFail($id);
+        $areaId = $activity->area_id;
         
         // Elimina anche i task associati
         $activity->tasks()->delete();
         
         $activity->delete();
+        
+        // Aggiorna i minuti dell'area se necessario
+        if ($areaId) {
+            $area = Area::find($areaId);
+            if ($area) {
+                $area->updateActualMinutesFromActivities();
+            }
+        }
         
         return redirect()->route('activities.index')
             ->with('success', 'Attività eliminata con successo.');
@@ -311,6 +380,14 @@ class ActivityController extends Controller
         
         $activity->save();
         
+        // Se l'attività è associata a un'area, aggiorna i minuti dell'area
+        if ($activity->area_id) {
+            $area = Area::find($activity->area_id);
+            if ($area) {
+                $area->updateActualMinutesFromActivities();
+            }
+        }
+        
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -371,6 +448,51 @@ class ActivityController extends Controller
             'success' => true,
             'hourly_rate' => $hourlyRate,
             'estimated_cost' => $estimatedCost,
+        ]);
+    }
+    
+    /**
+     * Check area available minutes.
+     */
+    public function checkAreaAvailableMinutes(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'area_id' => 'required|exists:areas,id',
+            'activity_id' => 'nullable|exists:activities,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $area = Area::find($request->area_id);
+        if (!$area) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Area non trovata'
+            ], 404);
+        }
+        
+        // Se stiamo modificando un'attività esistente, teniamo conto dei suoi minuti
+        $currentActivityMinutes = 0;
+        if ($request->has('activity_id') && $request->activity_id) {
+            $activity = Activity::find($request->activity_id);
+            if ($activity && $activity->area_id == $area->id) {
+                $currentActivityMinutes = $activity->estimated_minutes;
+            }
+        }
+        
+        $availableMinutes = $area->estimated_minutes - $area->activities_estimated_minutes + $currentActivityMinutes;
+        
+        return response()->json([
+            'success' => true,
+            'available_minutes' => $availableMinutes,
+            'area_estimated_minutes' => $area->estimated_minutes,
+            'area_activities_minutes' => $area->activities_estimated_minutes,
+            'current_activity_minutes' => $currentActivityMinutes
         ]);
     }
 }

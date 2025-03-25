@@ -48,6 +48,17 @@
                         @enderror
                     </div>
                 </div>
+
+                <!-- In areas.create.blade.php e areas.edit.blade.php -->
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label for="estimated_minutes">Minuti Stimati</label>
+        <input type="number" id="estimated_minutes" name="estimated_minutes" class="form-control @error('estimated_minutes') is-invalid @enderror" value="{{ old('estimated_minutes', $area->estimated_minutes ?? 0) }}" min="0" required>
+        @error('estimated_minutes')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+    </div>
+</div>
                 
                 <div class="row">
                     <div class="col-md-12">

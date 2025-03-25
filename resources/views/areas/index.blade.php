@@ -52,6 +52,7 @@
                                 <th>Nome</th>
                                 <th>Progetto</th>
                                 <th>Attività</th>
+                                <th>Minuti</th>
                                 <th>Progresso</th>
                                 <th>Azioni</th>
                             </tr>
@@ -63,10 +64,29 @@
                                     <td>{{ $area->project->name }}</td>
                                     <td>{{ $area->activities->count() }}</td>
                                     <td>
-                                        <div class="progress" style="height: 10px;">
-                                            <div class="progress-bar" role="progressbar" style="width: {{ $area->progress_percentage }}%" aria-valuenow="{{ $area->progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        <div class="d-flex flex-column">
+                                            <span>Stimati: {{ $area->estimated_minutes ?? 0 }}</span>
+                                            <span>Effettivi: {{ $area->actual_minutes ?? 0 }}</span>
+                                            <span>Rimanenti: {{ isset($area->estimated_minutes) ? max(0, $area->estimated_minutes - ($area->activities->sum('estimated_minutes') ?? 0)) : 0 }}</span>
                                         </div>
-                                        <small>{{ $area->progress_percentage }}%</small>
+                                    </td>
+                                    <td>
+                                        @php
+                                            $progressPercentage = 0;
+                                            if (isset($area->estimated_minutes) && $area->estimated_minutes > 0) {
+                                                $progressPercentage = min(100, round((($area->actual_minutes ?? 0) / $area->estimated_minutes) * 100));
+                                            }
+                                            $isOverEstimated = (isset($area->actual_minutes) && isset($area->estimated_minutes)) ? $area->actual_minutes > $area->estimated_minutes : false;
+                                        @endphp
+                                        <div class="progress" style="height: 10px;">
+                                            <div class="progress-bar {{ $isOverEstimated ? 'bg-danger' : 'bg-success' }}" 
+                                                 role="progressbar" 
+                                                 style="width: {{ $progressPercentage }}%" 
+                                                 aria-valuenow="{{ $progressPercentage }}" 
+                                                 aria-valuemin="0" 
+                                                 aria-valuemax="100"></div>
+                                        </div>
+                                        <small>{{ $progressPercentage }}%</small>
                                     </td>
                                     <td>
                                         <div class="btn-group" role="group">

@@ -20,7 +20,7 @@
                         <select id="project_id" name="project_id" class="form-select @error('project_id') is-invalid @enderror" required>
                             <option value="">Seleziona un progetto</option>
                             @foreach($projects as $project)
-                                <option value="{{ $project->id }}" data-hours-type="{{ $project->default_hours_type }}" {{ old('project_id') == $project->id ? 'selected' : '' }}>
+                                <option value="{{ $project->id }}" data-hours-type="{{ $project->default_hours_type }}" {{ old('project_id', $selectedProjectId ?? '') == $project->id ? 'selected' : '' }}>
                                     {{ $project->name }} ({{ $project->client->name }})
                                 </option>
                             @endforeach
@@ -44,6 +44,16 @@
                         <label for="area_id">Area</label>
                         <select id="area_id" name="area_id" class="form-select @error('area_id') is-invalid @enderror">
                             <option value="">Seleziona un'area (opzionale)</option>
+                            @if(isset($areas) && $areas->count() > 0)
+                                @foreach($areas as $area)
+                                    <option value="{{ $area->id }}" {{ old('area_id', $selectedArea->id ?? '') == $area->id ? 'selected' : '' }}
+                                        data-estimated-minutes="{{ $area->estimated_minutes }}"
+                                        data-used-minutes="{{ $area->activities_estimated_minutes }}"
+                                        data-remaining-minutes="{{ $area->remaining_estimated_minutes }}">
+                                        {{ $area->name }} (Minuti rimanenti: {{ $area->remaining_estimated_minutes }})
+                                    </option>
+                                @endforeach
+                            @endif
                         </select>
                         @error('area_id')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -65,6 +75,7 @@
                     <div class="col-md-4 mb-3">
                         <label for="estimated_minutes">Minuti Stimati</label>
                         <input type="number" id="estimated_minutes" name="estimated_minutes" class="form-control @error('estimated_minutes') is-invalid @enderror" value="{{ old('estimated_minutes') }}" min="1" required>
+                        <div id="area-minutes-warning" class="text-danger mt-1" style="display: none;"></div>
                         @error('estimated_minutes')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -87,6 +98,28 @@
                         @error('hours_type')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <div id="area-info" class="alert alert-info" style="display: none;">
+                            <h6>Informazioni Area</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <strong>Minuti Totali:</strong> <span id="area-total-minutes">0</span>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Minuti Utilizzati:</strong> <span id="area-used-minutes">0</span>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Minuti Rimanenti:</strong> <span id="area-remaining-minutes">0</span>
+                                </div>
+                            </div>
+                            <div class="progress mt-2" style="height: 10px;">
+                                <div id="area-minutes-progress" class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -136,6 +169,7 @@
         let resources = [];
         let selectedResource = null;
         let selectedProject = null;
+        let selectedArea = null;
         
         // Elementi DOM
         const projectSelect = document.getElementById('project_id');
@@ -146,6 +180,12 @@
         const resourceInfo = document.querySelector('.resource-info');
         const estimatedCostPreview = document.getElementById('estimatedCostPreview');
         const estimatedCostValue = document.getElementById('estimatedCostValue');
+        const areaInfo = document.getElementById('area-info');
+        const areaTotalMinutes = document.getElementById('area-total-minutes');
+        const areaUsedMinutes = document.getElementById('area-used-minutes');
+        const areaRemainingMinutes = document.getElementById('area-remaining-minutes');
+        const areaMinutesProgress = document.getElementById('area-minutes-progress');
+        const areaMinutesWarning = document.getElementById('area-minutes-warning');
         
         // Event listeners
         projectSelect.addEventListener('change', function() {
@@ -165,7 +205,29 @@
                 resourceSelect.innerHTML = '<option value="">Seleziona una risorsa</option>';
                 resourceInfo.style.display = 'none';
                 estimatedCostPreview.style.display = 'none';
+                areaInfo.style.display = 'none';
+                selectedArea = null;
             }
+        });
+        
+        areaSelect.addEventListener('change', function() {
+            const areaId = this.value;
+            if (areaId) {
+                const selectedOption = this.options[this.selectedIndex];
+                selectedArea = {
+                    id: areaId,
+                    estimatedMinutes: parseInt(selectedOption.dataset.estimatedMinutes) || 0,
+                    usedMinutes: parseInt(selectedOption.dataset.usedMinutes) || 0,
+                    remainingMinutes: parseInt(selectedOption.dataset.remainingMinutes) || 0
+                };
+                updateAreaInfo();
+            } else {
+                selectedArea = null;
+                areaInfo.style.display = 'none';
+                areaMinutesWarning.style.display = 'none';
+            }
+            
+            validateEstimatedMinutes();
         });
         
         resourceSelect.addEventListener('change', function() {
@@ -177,6 +239,7 @@
             } else {
                 resourceInfo.style.display = 'none';
                 estimatedCostPreview.style.display = 'none';
+                selectedResource = null;
             }
         });
         
@@ -189,6 +252,7 @@
         
         estimatedMinutesInput.addEventListener('input', function() {
             updateEstimatedCost();
+            validateEstimatedMinutes();
         });
         
         // Carica le aree per il progetto selezionato
@@ -199,9 +263,28 @@
                     if (data.success) {
                         let options = '<option value="">Seleziona un\'area (opzionale)</option>';
                         data.areas.forEach(area => {
-                            options += `<option value="${area.id}">${area.name}</option>`;
+                            // Calcoliamo i minuti rimanenti
+                            const estimatedMinutes = area.estimated_minutes || 0;
+                            const usedMinutes = area.activities_estimated_minutes || 0;
+                            const remainingMinutes = Math.max(0, estimatedMinutes - usedMinutes);
+                            
+                            options += `<option value="${area.id}" 
+                                       data-estimated-minutes="${estimatedMinutes}" 
+                                       data-used-minutes="${usedMinutes}" 
+                                       data-remaining-minutes="${remainingMinutes}">
+                                       ${area.name} (Minuti rimanenti: ${remainingMinutes})
+                                   </option>`;
                         });
                         areaSelect.innerHTML = options;
+                        
+                        // Se c'è un'area selezionata precedentemente, proviamo a ri-selezionarla
+                        if (selectedArea) {
+                            const option = areaSelect.querySelector(`option[value="${selectedArea.id}"]`);
+                            if (option) {
+                                option.selected = true;
+                                areaSelect.dispatchEvent(new Event('change'));
+                            }
+                        }
                     }
                 })
                 .catch(error => console.error('Errore nel caricamento delle aree:', error));
@@ -219,9 +302,68 @@
                             options += `<option value="${resource.id}">${resource.name} (${resource.role})</option>`;
                         });
                         resourceSelect.innerHTML = options;
+                        
+                        // Se c'è una risorsa selezionata precedentemente, proviamo a ri-selezionarla
+                        if (selectedResource) {
+                            const option = resourceSelect.querySelector(`option[value="${selectedResource.id}"]`);
+                            if (option) {
+                                option.selected = true;
+                                resourceSelect.dispatchEvent(new Event('change'));
+                            }
+                        }
                     }
                 })
                 .catch(error => console.error('Errore nel caricamento delle risorse:', error));
+        }
+        
+        // Aggiorna le informazioni dell'area selezionata
+        function updateAreaInfo() {
+            if (!selectedArea) {
+                areaInfo.style.display = 'none';
+                return;
+            }
+            
+            areaTotalMinutes.textContent = selectedArea.estimatedMinutes;
+            areaUsedMinutes.textContent = selectedArea.usedMinutes;
+            areaRemainingMinutes.textContent = selectedArea.remainingMinutes;
+            
+            // Calcola la percentuale di utilizzo
+            const usagePercentage = selectedArea.estimatedMinutes > 0 ? 
+                Math.min(100, (selectedArea.usedMinutes / selectedArea.estimatedMinutes) * 100) : 0;
+            
+            areaMinutesProgress.style.width = `${usagePercentage}%`;
+            areaMinutesProgress.setAttribute('aria-valuenow', usagePercentage);
+            
+            // Cambia il colore della barra in base alla percentuale
+            if (usagePercentage > 90) {
+                areaMinutesProgress.classList.remove('bg-info', 'bg-warning');
+                areaMinutesProgress.classList.add('bg-danger');
+            } else if (usagePercentage > 70) {
+                areaMinutesProgress.classList.remove('bg-info', 'bg-danger');
+                areaMinutesProgress.classList.add('bg-warning');
+            } else {
+                areaMinutesProgress.classList.remove('bg-warning', 'bg-danger');
+                areaMinutesProgress.classList.add('bg-info');
+            }
+            
+            areaInfo.style.display = 'block';
+        }
+        
+        // Verifica che i minuti stimati non superino quelli disponibili nell'area
+        function validateEstimatedMinutes() {
+            const estimatedMinutes = parseInt(estimatedMinutesInput.value) || 0;
+            
+            if (selectedArea && estimatedMinutes > 0) {
+                if (estimatedMinutes > selectedArea.remainingMinutes) {
+                    areaMinutesWarning.textContent = `Attenzione: I minuti stimati (${estimatedMinutes}) superano i minuti disponibili nell'area (${selectedArea.remainingMinutes})`;
+                    areaMinutesWarning.style.display = 'block';
+                    // Non disabilitiamo il pulsante di invio, ma avvisiamo l'utente
+                } else {
+                    areaMinutesWarning.style.display = 'none';
+                }
+            } else {
+                areaMinutesWarning.style.display = 'none';
+            }
         }
         
         // Aggiorna le informazioni della risorsa selezionata
@@ -325,6 +467,11 @@
         // Inizializzazione
         if (projectSelect.value) {
             projectSelect.dispatchEvent(new Event('change'));
+        }
+        
+        // Se un'area è già selezionata, mostra le sue informazioni
+        if (areaSelect.value) {
+            areaSelect.dispatchEvent(new Event('change'));
         }
     });
 </script>

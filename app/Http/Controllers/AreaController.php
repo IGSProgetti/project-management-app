@@ -6,6 +6,7 @@ use App\Models\Area;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Schema;
 
 class AreaController extends Controller
 {
@@ -13,11 +14,19 @@ class AreaController extends Controller
      * Display a listing of the resource.
      */
     public function index()
-{
-    $areas = Area::with('project')->get();
-    $projects = \App\Models\Project::all();
-    return view('areas.index', compact('areas', 'projects'));
-}
+    {
+        // Assicuriamoci che il modello carica solo i campi che esistono nella tabella
+        $areas = Area::with('project')->get();
+        
+        // Verifichiamo se i nuovi campi esistono
+        $hasEstimatedMinutes = Schema::hasColumn('areas', 'estimated_minutes');
+        $hasActualMinutes = Schema::hasColumn('areas', 'actual_minutes');
+        
+        $projects = Project::all();
+        return view('areas.index', compact('areas', 'projects', 'hasEstimatedMinutes', 'hasActualMinutes'));
+    }
+
+    // 
 
     /**
      * Show the form for creating a new resource.
@@ -37,6 +46,7 @@ class AreaController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'project_id' => 'required|exists:projects,id',
+            'estimated_minutes' => 'required|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -45,9 +55,16 @@ class AreaController extends Controller
                 ->withInput();
         }
 
-        Area::create($request->all());
+        // Verifica che il progetto esista e abbia abbastanza minuti disponibili
+        $project = Project::findOrFail($request->project_id);
+        
+        // Creazione dell'area
+        $area = new Area();
+        $area->fill($request->all());
+        $area->actual_minutes = 0; // Inizializza i minuti effettivi a zero
+        $area->save();
 
-        return redirect()->route('areas.index')
+        return redirect()->route('areas.show', $area->id)
             ->with('success', 'Area creata con successo.');
     }
 
@@ -56,7 +73,7 @@ class AreaController extends Controller
      */
     public function show(string $id)
     {
-        $area = Area::with(['project', 'activities.resource'])->findOrFail($id);
+        $area = Area::with(['project', 'activities.resource', 'activities.tasks'])->findOrFail($id);
         return view('areas.show', compact('area'));
     }
 
@@ -79,6 +96,7 @@ class AreaController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'project_id' => 'required|exists:projects,id',
+            'estimated_minutes' => 'required|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -88,9 +106,12 @@ class AreaController extends Controller
         }
 
         $area = Area::findOrFail($id);
-        $area->update($request->all());
+        $originalProjectId = $area->project_id;
+        
+        $area->fill($request->all());
+        $area->save();
 
-        return redirect()->route('areas.index')
+        return redirect()->route('areas.show', $area->id)
             ->with('success', 'Area aggiornata con successo.');
     }
 
@@ -124,5 +145,17 @@ class AreaController extends Controller
             'success' => true,
             'areas' => $areas
         ]);
+    }
+    
+    /**
+     * Update the area's actual minutes from activities.
+     */
+    public function updateMinutes(string $id)
+    {
+        $area = Area::findOrFail($id);
+        $area->updateActualMinutesFromActivities();
+        
+        return redirect()->back()
+            ->with('success', 'Minuti aggiornati con successo.');
     }
 }
