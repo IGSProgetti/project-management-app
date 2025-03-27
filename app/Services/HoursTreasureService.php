@@ -38,6 +38,7 @@ class HoursTreasureService
      */
     private function prepareResourcesData($resources, array $filters = [])
     {
+        // Inizializza l'array dei dati delle risorse
         $resourcesData = [];
         
         // Estrai i filtri
@@ -54,6 +55,14 @@ class HoursTreasureService
                 'total_estimated_hours' => 0,
                 'total_actual_hours' => 0,
                 'total_treasure_hours' => 0,
+                // Ore stimate ed effettive per tipo (standard/extra)
+                'standard_estimated_hours' => 0,
+                'extra_estimated_hours' => 0,
+                'standard_actual_hours' => 0,
+                'extra_actual_hours' => 0,
+                // Ore rimanenti per tipo (standard/extra)
+                'remaining_standard_hours' => $resource->standard_hours_per_year,
+                'remaining_extra_hours' => $resource->extra_hours_per_year,
                 'by_client' => [],
                 'by_project' => [],
                 'by_activity' => []
@@ -91,10 +100,28 @@ class HoursTreasureService
                 $actualHours = $activity->actual_minutes / 60;
                 $treasureHours = $estimatedHours - $actualHours;
                 
+                // Determina il tipo di ore (standard o extra)
+                $hoursType = $activity->hours_type ?: 'standard';
+                
                 // Aggiungi al totale della risorsa
                 $resourceData['total_estimated_hours'] += $estimatedHours;
                 $resourceData['total_actual_hours'] += $actualHours;
                 $resourceData['total_treasure_hours'] += $treasureHours;
+                
+                // Aggiungi ai totali per tipo di ore
+                if ($hoursType === 'standard') {
+                    $resourceData['standard_estimated_hours'] += $estimatedHours;
+                    $resourceData['standard_actual_hours'] += $actualHours;
+                    
+                    // Sottrai le ore stimate dalle ore standard rimanenti
+                    $resourceData['remaining_standard_hours'] -= $estimatedHours;
+                } else {
+                    $resourceData['extra_estimated_hours'] += $estimatedHours;
+                    $resourceData['extra_actual_hours'] += $actualHours;
+                    
+                    // Sottrai le ore stimate dalle ore extra rimanenti
+                    $resourceData['remaining_extra_hours'] -= $estimatedHours;
+                }
                 
                 // Aggiungi ai totali per cliente
                 if (!isset($resourceData['by_client'][$clientId])) {
@@ -104,12 +131,21 @@ class HoursTreasureService
                         'estimated_hours' => 0,
                         'actual_hours' => 0,
                         'treasure_hours' => 0,
+                        'standard_estimated_hours' => 0,
+                        'extra_estimated_hours' => 0,
                     ];
                 }
                 
                 $resourceData['by_client'][$clientId]['estimated_hours'] += $estimatedHours;
                 $resourceData['by_client'][$clientId]['actual_hours'] += $actualHours;
                 $resourceData['by_client'][$clientId]['treasure_hours'] += $treasureHours;
+                
+                // Aggiungi ai totali per tipo di ore per cliente
+                if ($hoursType === 'standard') {
+                    $resourceData['by_client'][$clientId]['standard_estimated_hours'] += $estimatedHours;
+                } else {
+                    $resourceData['by_client'][$clientId]['extra_estimated_hours'] += $estimatedHours;
+                }
                 
                 // Aggiungi ai totali per progetto
                 if (!isset($resourceData['by_project'][$projectId])) {
@@ -121,12 +157,21 @@ class HoursTreasureService
                         'estimated_hours' => 0,
                         'actual_hours' => 0,
                         'treasure_hours' => 0,
+                        'standard_estimated_hours' => 0,
+                        'extra_estimated_hours' => 0,
                     ];
                 }
                 
                 $resourceData['by_project'][$projectId]['estimated_hours'] += $estimatedHours;
                 $resourceData['by_project'][$projectId]['actual_hours'] += $actualHours;
                 $resourceData['by_project'][$projectId]['treasure_hours'] += $treasureHours;
+                
+                // Aggiungi ai totali per tipo di ore per progetto
+                if ($hoursType === 'standard') {
+                    $resourceData['by_project'][$projectId]['standard_estimated_hours'] += $estimatedHours;
+                } else {
+                    $resourceData['by_project'][$projectId]['extra_estimated_hours'] += $estimatedHours;
+                }
                 
                 // Aggiungi i dati per attività
                 $resourceData['by_activity'][] = [
@@ -139,7 +184,7 @@ class HoursTreasureService
                     'estimated_hours' => $estimatedHours,
                     'actual_hours' => $actualHours,
                     'treasure_hours' => $treasureHours,
-                    'hours_type' => $activity->hours_type,
+                    'hours_type' => $hoursType,
                     'status' => $activity->status
                 ];
             }
@@ -150,11 +195,11 @@ class HoursTreasureService
             
             // Calcola le statistiche di utilizzo delle ore annuali
             $standardHoursUsage = ($resource->standard_hours_per_year > 0) 
-                ? ($resource->total_standard_actual_hours / $resource->standard_hours_per_year) * 100 
+                ? ($resourceData['standard_estimated_hours'] / $resource->standard_hours_per_year) * 100 
                 : 0;
                 
             $extraHoursUsage = ($resource->extra_hours_per_year > 0) 
-                ? ($resource->total_extra_actual_hours / $resource->extra_hours_per_year) * 100 
+                ? ($resourceData['extra_estimated_hours'] / $resource->extra_hours_per_year) * 100 
                 : 0;
                 
             $resourceData['standard_hours_usage'] = round($standardHoursUsage, 2);
@@ -178,6 +223,10 @@ class HoursTreasureService
             'total_estimated' => 0,
             'total_actual' => 0,
             'total_treasure' => 0,
+            'total_standard_hours' => 0,
+            'total_extra_hours' => 0,
+            'total_remaining_standard_hours' => 0,
+            'total_remaining_extra_hours' => 0,
             'efficiency_rate' => 0,
             'by_resource' => []
         ];
@@ -186,6 +235,10 @@ class HoursTreasureService
             $stats['total_estimated'] += $resourceData['total_estimated_hours'];
             $stats['total_actual'] += $resourceData['total_actual_hours'];
             $stats['total_treasure'] += $resourceData['total_treasure_hours'];
+            $stats['total_standard_hours'] += $resourceData['standard_hours_per_year'];
+            $stats['total_extra_hours'] += $resourceData['extra_hours_per_year'];
+            $stats['total_remaining_standard_hours'] += $resourceData['remaining_standard_hours'];
+            $stats['total_remaining_extra_hours'] += $resourceData['remaining_extra_hours'];
             
             $efficiency = $resourceData['total_estimated_hours'] > 0 
                 ? ($resourceData['total_actual_hours'] / $resourceData['total_estimated_hours']) * 100 

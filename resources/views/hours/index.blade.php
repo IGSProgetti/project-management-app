@@ -87,11 +87,12 @@
                             <th>Risorsa</th>
                             <th>Ruolo</th>
                             <th>Ore Standard/Anno</th>
+                            <th>Ore Standard Rimanenti</th>
                             <th>Ore Extra/Anno</th>
                             <th>Ore Stimate</th>
                             <th>Ore Effettive</th>
-                            <th>Tesoretto</th>
                             <th>Utilizzo Ore</th>
+                            <th>Tesoretto</th>
                             <th>Azioni</th>
                         </tr>
                     </thead>
@@ -272,15 +273,18 @@
 }
 
 /* Definizione delle larghezze delle colonne per evitare espansione eccessiva */
-#resourcesTable th:nth-child(1), #resourcesTable td:nth-child(1) { width: 12%; } /* Risorsa */
-#resourcesTable th:nth-child(2), #resourcesTable td:nth-child(2) { width: 10%; } /* Ruolo */
-#resourcesTable th:nth-child(3), #resourcesTable td:nth-child(3) { width: 9%; } /* Ore Standard */
-#resourcesTable th:nth-child(4), #resourcesTable td:nth-child(4) { width: 9%; } /* Ore Extra */
-#resourcesTable th:nth-child(5), #resourcesTable td:nth-child(5) { width: 9%; } /* Ore Stimate */
-#resourcesTable th:nth-child(6), #resourcesTable td:nth-child(6) { width: 9%; } /* Ore Effettive */
-#resourcesTable th:nth-child(7), #resourcesTable td:nth-child(7) { width: 9%; } /* Tesoretto */
-#resourcesTable th:nth-child(8), #resourcesTable td:nth-child(8) { width: 25%; } /* Utilizzo Ore */
-#resourcesTable th:nth-child(9), #resourcesTable td:nth-child(9) { width: 8%; } /* Azioni */
+/* Modifiche alle larghezze delle colonne per adattarsi alle nuove colonne */
+#resourcesTable th:nth-child(1), #resourcesTable td:nth-child(1) { width: 10%; } /* Risorsa */
+#resourcesTable th:nth-child(2), #resourcesTable td:nth-child(2) { width: 8%; } /* Ruolo */
+#resourcesTable th:nth-child(3), #resourcesTable td:nth-child(3) { width: 7%; } /* Ore Standard */
+#resourcesTable th:nth-child(4), #resourcesTable td:nth-child(4) { width: 7%; } /* Ore Standard Rimanenti */
+#resourcesTable th:nth-child(5), #resourcesTable td:nth-child(5) { width: 7%; } /* Ore Extra */
+#resourcesTable th:nth-child(6), #resourcesTable td:nth-child(6) { width: 7%; } /* Ore Extra Rimanenti */
+#resourcesTable th:nth-child(7), #resourcesTable td:nth-child(7) { width: 7%; } /* Ore Stimate */
+#resourcesTable th:nth-child(8), #resourcesTable td:nth-child(8) { width: 7%; } /* Ore Effettive */
+#resourcesTable th:nth-child(9), #resourcesTable td:nth-child(9) { width: 7%; } /* Tesoretto */
+#resourcesTable th:nth-child(10), #resourcesTable td:nth-child(10) { width: 25%; } /* Utilizzo Ore */
+#resourcesTable th:nth-child(11), #resourcesTable td:nth-child(11) { width: 8%; } /* Azioni */
 
 /* Stile per i progress bar più compatti */
 .progress {
@@ -361,6 +365,27 @@
   max-height: 200px;
   height: 200px;
 }
+
+/* Stili per il tesoretto e le ore rimanenti */
+.treasure-positive {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.treasure-negative {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.hours-positive {
+    color: #28a745;
+}
+
+.hours-negative {
+    color: #dc3545;
+    font-weight: bold;
+}
+
 </style>
 @endpush
 
@@ -502,54 +527,56 @@ document.addEventListener('DOMContentLoaded', function() {
      * Popola la tabella delle risorse
      */
     function populateResourcesTable() {
-        const tableBody = document.querySelector('#resourcesTable tbody');
-        tableBody.innerHTML = '';
+    const tableBody = document.querySelector('#resourcesTable tbody');
+    tableBody.innerHTML = '';
+    
+    resourcesData.forEach(resource => {
+        const row = document.createElement('tr');
         
-        resourcesData.forEach(resource => {
-            const row = document.createElement('tr');
-            
-            // Calcola utilizzo ore standard e extra
-            const standardUsage = (resource.standard_hours_per_year > 0) 
-                ? (resource.total_actual_hours / resource.standard_hours_per_year) * 100 
-                : 0;
-                
-            const treasureClass = resource.total_treasure_hours >= 0 ? 'treasure-positive' : 'treasure-negative';
-            
-            row.innerHTML = `
-                <td>${resource.name}</td>
-                <td>${resource.role}</td>
-                <td>${resource.standard_hours_per_year.toFixed(2)}</td>
-                <td>${resource.extra_hours_per_year.toFixed(2)}</td>
-                <td>${resource.total_estimated_hours.toFixed(2)}</td>
-                <td>${resource.total_actual_hours.toFixed(2)}</td>
-                <td class="${treasureClass}">${resource.total_treasure_hours.toFixed(2)}</td>
-                <td>
-                    <div class="small">Standard: ${resource.standard_hours_usage}%</div>
-                    <div class="progress mb-2">
-                        <div class="progress-bar progress-bar-standard" role="progressbar" style="width: ${Math.min(100, resource.standard_hours_usage)}%"></div>
-                    </div>
-                    <div class="small">Extra: ${resource.extra_hours_usage}%</div>
-                    <div class="progress">
-                        <div class="progress-bar progress-bar-extra" role="progressbar" style="width: ${Math.min(100, resource.extra_hours_usage)}%"></div>
-                    </div>
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-primary btn-detail" data-resource-id="${resource.id}">
-                        <i class="fas fa-chart-pie"></i> Dettagli
-                    </button>
-                </td>
-            `;
-            
-            // Aggiungi l'event listener per il pulsante dettagli
-            const detailButton = row.querySelector('.btn-detail');
-            detailButton.addEventListener('click', function() {
-                const resourceId = this.getAttribute('data-resource-id');
-                showResourceDetail(resourceId);
-            });
-            
-            tableBody.appendChild(row);
+        // Determina le classi CSS per il tesoretto e le ore rimanenti
+        const treasureClass = resource.total_treasure_hours >= 0 ? 'text-success' : 'text-danger';
+        const stdRemainingClass = resource.remaining_standard_hours >= 0 ? 'text-success' : 'text-danger';
+        const extraRemainingClass = resource.remaining_extra_hours >= 0 ? 'text-success' : 'text-danger';
+        
+        row.innerHTML = `
+            <td>${resource.name}</td>
+            <td>${resource.role}</td>
+            <td>${resource.standard_hours_per_year.toFixed(2)}</td>
+            <td class="${stdRemainingClass} fw-bold">${resource.remaining_standard_hours.toFixed(2)}</td>
+            <td>${resource.extra_hours_per_year.toFixed(2)}</td>
+            <td class="${extraRemainingClass} fw-bold">${resource.remaining_extra_hours.toFixed(2)}</td>
+            <td>${resource.total_estimated_hours.toFixed(2)}</td>
+            <td>${resource.total_actual_hours.toFixed(2)}</td>
+            <td class="${treasureClass} fw-bold">${resource.total_treasure_hours.toFixed(2)}</td>
+            <td>
+                <div class="small">Standard: ${resource.standard_hours_usage}%</div>
+                <div class="progress mb-2">
+                    <div class="progress-bar ${resource.standard_hours_usage > 95 ? 'bg-danger' : 'bg-primary'}" 
+                        role="progressbar" style="width: ${Math.min(100, resource.standard_hours_usage)}%"></div>
+                </div>
+                <div class="small">Extra: ${resource.extra_hours_usage}%</div>
+                <div class="progress">
+                    <div class="progress-bar ${resource.extra_hours_usage > 95 ? 'bg-danger' : 'bg-success'}" 
+                        role="progressbar" style="width: ${Math.min(100, resource.extra_hours_usage)}%"></div>
+                </div>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-primary btn-detail" data-resource-id="${resource.id}">
+                    <i class="fas fa-chart-pie"></i> Dettagli
+                </button>
+            </td>
+        `;
+        
+        // Aggiungi l'event listener per il pulsante dettagli
+        const detailButton = row.querySelector('.btn-detail');
+        detailButton.addEventListener('click', function() {
+            const resourceId = this.getAttribute('data-resource-id');
+            showResourceDetail(resourceId);
         });
-    }
+        
+        tableBody.appendChild(row);
+    });
+}
     
     /**
      * Inizializza i grafici
