@@ -82,3 +82,14 @@ Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name
 // Rotte per il calendario
 Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
 Route::get('/api/calendar/events', [CalendarController::class, 'getEvents'])->name('calendar.events');
+
+// Rotte per la gestione orario
+Route::get('/hours', [App\Http\Controllers\ResourceHoursController::class, 'index'])->name('hours.index');
+Route::get('/hours/filter', [App\Http\Controllers\ResourceHoursController::class, 'filter'])->name('hours.filter');
+Route::get('/hours/export', [App\Http\Controllers\ResourceHoursController::class, 'export'])->name('hours.export');
+
+
+
+// Rotte per il profilo utente
+Route::get('/profile', [App\Http\Controllers\UserController::class, 'profile'])->name('users.profile');
+Route::post('/profile', [App\Http\Controllers\UserController::class, 'updateProfile'])->name('users.updateProfile');

@@ -37,6 +37,15 @@
                         Gestione Risorse
                     </a>
                 </li>
+                <!-- Elemento da aggiungere al menu di navigazione -->
+<li class="nav-item">
+    <a class="nav-link {{ request()->routeIs('hours.index') ? 'active' : '' }}" href="{{ route('hours.index') }}">
+        <i class="fas fa-clock"></i>
+        <span>Gestione Orario</span>
+    </a>
+</li>
+
+
                 <li>
                     <a href="{{ route('clients.index') }}" class="nav-link {{ request()->routeIs('clients.*') ? 'active' : '' }}">
                         <i class="fas fa-building"></i>
