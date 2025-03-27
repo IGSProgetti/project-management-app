@@ -93,3 +93,7 @@ Route::get('/hours/export', [App\Http\Controllers\ResourceHoursController::class
 // Rotte per il profilo utente
 Route::get('/profile', [App\Http\Controllers\UserController::class, 'profile'])->name('users.profile');
 Route::post('/profile', [App\Http\Controllers\UserController::class, 'updateProfile'])->name('users.updateProfile');
+
+use App\Http\Controllers\ResourceHoursController;
+
+Route::get('resource/{resourceId}/tasks', [ResourceHoursController::class, 'getResourceTaskDetails'])->name('resource.tasks');

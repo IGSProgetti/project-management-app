@@ -6,7 +6,9 @@ use App\Models\Resource;
 use App\Models\Project;
 use App\Models\Client;
 use App\Models\Activity;
+use App\Models\Task;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class HoursTreasureService
 {
@@ -21,7 +23,7 @@ class HoursTreasureService
     {
         // Se non vengono fornite risorse, carica tutte le risorse attive
         if ($resources === null) {
-            $resources = Resource::with(['projects', 'activities.project.client'])
+            $resources = Resource::with(['projects', 'activities.project.client', 'activities.tasks'])
                 ->where('is_active', true)
                 ->get();
         }
@@ -98,7 +100,16 @@ class HoursTreasureService
                 // Converti minuti in ore
                 $estimatedHours = $activity->estimated_minutes / 60;
                 $actualHours = $activity->actual_minutes / 60;
-                $treasureHours = $estimatedHours - $actualHours;
+                
+                // Calcola il tesoretto solo per attività completate
+                $treasureHours = 0;
+                if ($activity->status === 'completed') {
+                    // Calcola la differenza tra ore stimate ed effettive (può essere negativo)
+                    $treasureHours = $estimatedHours - $actualHours;
+                    
+                    // Debug: stampa i valori per verificare i calcoli
+                    Log::debug("Activity: {$activity->name}, Estimated: {$estimatedHours}, Actual: {$actualHours}, Treasure: {$treasureHours}");
+                }
                 
                 // Determina il tipo di ore (standard o extra)
                 $hoursType = $activity->hours_type ?: 'standard';
@@ -209,6 +220,157 @@ class HoursTreasureService
         }
         
         return $resourcesData;
+    }
+    
+    /**
+     * Ottiene i dettagli delle attività e dei task per risorsa con calcolo del tesoretto.
+     * 
+     * @param int $resourceId ID della risorsa
+     * @param array $filters Filtri da applicare
+     * @return array Dettagli delle attività e task con tesoretto
+     */
+    public function getTaskDetailsByResource($resourceId, array $filters = [])
+    {
+        // Carica la risorsa specifica con le sue attività e task
+        $resource = Resource::with(['activities.project.client', 'activities.tasks'])
+            ->where('id', $resourceId)
+            ->where('is_active', true)
+            ->firstOrFail();
+            
+        // Estrai i filtri
+        $projectIds = $filters['project_ids'] ?? [];
+        $clientIds = $filters['client_ids'] ?? [];
+        $activityId = $filters['activity_id'] ?? null;
+        
+        // Filtra le attività
+        $filteredActivities = $resource->activities->filter(function ($activity) use ($projectIds, $clientIds, $activityId) {
+            // Se è specificato un ID attività specifico, filtra solo per quello
+            if ($activityId && $activity->id != $activityId) {
+                return false;
+            }
+            
+            // Verifica se l'attività appartiene a un progetto selezionato
+            if (!empty($projectIds) && !in_array($activity->project_id, $projectIds)) {
+                return false;
+            }
+            
+            // Verifica se l'attività appartiene a un cliente selezionato
+            if (!empty($clientIds) && $activity->project && !in_array($activity->project->client_id, $clientIds)) {
+                return false;
+            }
+            
+            return true;
+        });
+        
+        // Prepara l'array di risposta
+        $taskDetails = [];
+        
+        foreach ($filteredActivities as $activity) {
+            // Ignora se non c'è progetto o cliente
+            if (!$activity->project || !$activity->project->client) {
+                continue;
+            }
+            
+            // Recupera i task dell'attività
+            if ($activity->tasks && $activity->tasks->count() > 0) {
+                foreach ($activity->tasks as $task) {
+                    // Converti minuti in ore
+                    $estimatedHours = $task->estimated_minutes / 60;
+                    $actualHours = $task->actual_minutes / 60;
+                    
+                    // Calcola il tesoretto solo per task completati
+                    $treasureHours = 0;
+                    if ($task->status === 'completed') {
+                        $treasureHours = $estimatedHours - $actualHours;
+                    }
+                    
+                    // Determina stato per visualizzazione
+                    $statusLabel = '';
+                    switch ($task->status) {
+                        case 'pending': $statusLabel = 'In attesa'; break;
+                        case 'in_progress': $statusLabel = 'In corso'; break;
+                        case 'completed': $statusLabel = 'Completato'; break;
+                        default: $statusLabel = 'N/D'; break;
+                    }
+                    
+                    $hoursType = $activity->hours_type ?: 'standard';
+                    $hoursTypeLabel = ($hoursType === 'standard') ? 'Standard' : 'Extra';
+                    
+                    // Aggiungi i dettagli del task
+                    $taskDetails[] = [
+                        'id' => $task->id,
+                        'name' => $task->name,
+                        'activity_id' => $activity->id,
+                        'activity_name' => $activity->name,
+                        'project_id' => $activity->project_id,
+                        'project_name' => $activity->project->name,
+                        'client_id' => $activity->project->client_id,
+                        'client_name' => $activity->project->client->name,
+                        'estimated_hours' => $estimatedHours,
+                        'actual_hours' => $actualHours,
+                        'treasure_hours' => $treasureHours,
+                        'hours_type' => $hoursType,
+                        'hours_type_label' => $hoursTypeLabel,
+                        'status' => $task->status,
+                        'status_label' => $statusLabel,
+                        'completion_percentage' => $task->progress_percentage,
+                        'is_overdue' => $task->is_overdue,
+                        'is_over_estimated' => $task->is_over_estimated
+                    ];
+                }
+            } else {
+                // Se non ci sono task, usa i dati dell'attività stessa
+                $estimatedHours = $activity->estimated_minutes / 60;
+                $actualHours = $activity->actual_minutes / 60;
+                
+                // Calcola il tesoretto solo per attività completate
+                $treasureHours = 0;
+                if ($activity->status === 'completed') {
+                    $treasureHours = $estimatedHours - $actualHours;
+                }
+                
+                // Determina stato per visualizzazione
+                $statusLabel = '';
+                switch ($activity->status) {
+                    case 'pending': $statusLabel = 'In attesa'; break;
+                    case 'in_progress': $statusLabel = 'In corso'; break;
+                    case 'completed': $statusLabel = 'Completato'; break;
+                    default: $statusLabel = 'N/D'; break;
+                }
+                
+                $hoursType = $activity->hours_type ?: 'standard';
+                $hoursTypeLabel = ($hoursType === 'standard') ? 'Standard' : 'Extra';
+                
+                // Calcola percentuale di completamento
+                $completionPercentage = $estimatedHours > 0 
+                    ? min(100, ($actualHours / $estimatedHours) * 100) 
+                    : ($activity->status === 'completed' ? 100 : 0);
+                
+                // Aggiungi i dettagli dell'attività come task
+                $taskDetails[] = [
+                    'id' => "act-" . $activity->id,  // Prefisso per distinguere le attività dai task
+                    'name' => $activity->name . " (No Tasks)",
+                    'activity_id' => $activity->id,
+                    'activity_name' => $activity->name,
+                    'project_id' => $activity->project_id,
+                    'project_name' => $activity->project->name,
+                    'client_id' => $activity->project->client_id,
+                    'client_name' => $activity->project->client->name,
+                    'estimated_hours' => $estimatedHours,
+                    'actual_hours' => $actualHours,
+                    'treasure_hours' => $treasureHours,
+                    'hours_type' => $hoursType,
+                    'hours_type_label' => $hoursTypeLabel,
+                    'status' => $activity->status,
+                    'status_label' => $statusLabel,
+                    'completion_percentage' => $completionPercentage,
+                    'is_overdue' => false,
+                    'is_over_estimated' => $actualHours > $estimatedHours && $estimatedHours > 0
+                ];
+            }
+        }
+        
+        return $taskDetails;
     }
     
     /**

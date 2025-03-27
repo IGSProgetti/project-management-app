@@ -20,6 +20,7 @@
                         <li><a class="dropdown-item export-btn" href="#" data-type="clients">Esporta per Cliente</a></li>
                         <li><a class="dropdown-item export-btn" href="#" data-type="projects">Esporta per Progetto</a></li>
                         <li><a class="dropdown-item export-btn" href="#" data-type="activities">Esporta per Attività</a></li>
+                        <li><a class="dropdown-item export-btn" href="#" data-type="tasks">Esporta per Task</a></li>
                     </ul>
                 </div>
             </div>
@@ -89,10 +90,11 @@
                             <th>Ore Standard/Anno</th>
                             <th>Ore Standard Rimanenti</th>
                             <th>Ore Extra/Anno</th>
+                            <th>Ore Extra Rimanenti</th>
                             <th>Ore Stimate</th>
                             <th>Ore Effettive</th>
-                            <th>Utilizzo Ore</th>
                             <th>Tesoretto</th>
+                            <th>Utilizzo Ore</th>
                             <th>Azioni</th>
                         </tr>
                     </thead>
@@ -111,7 +113,7 @@
             <button type="button" class="btn-close" id="closeResourceDetail"></button>
         </div>
         <div class="card-body">
-            <!-- Tabs per navigare tra dettagli client/progetto/attività -->
+            <!-- Tabs per navigare tra dettagli client/progetto/attività/task -->
             <ul class="nav nav-tabs mb-3" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="client-tab" data-bs-toggle="tab" data-bs-target="#client-view" type="button" role="tab">Per Cliente</button>
@@ -121,6 +123,9 @@
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity-view" type="button" role="tab">Per Attività</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="task-tab" data-bs-toggle="tab" data-bs-target="#task-view" type="button" role="tab">Per Task</button>
                 </li>
             </ul>
             
@@ -186,12 +191,63 @@
                                     <th>Ore Stimate</th>
                                     <th>Ore Effettive</th>
                                     <th>Tesoretto</th>
+                                    <th>Task</th>  <!-- Colonna per vedere i task -->
                                 </tr>
                             </thead>
                             <tbody>
                                 <!-- Dati popolati dinamicamente da JavaScript -->
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- Sezione per visualizzare il dettaglio delle task -->
+                    <div id="taskDetail" class="mt-4" style="display: none;">
+                        <h5 class="mb-3">Dettaglio Task: <span id="activityDetailName"></span></h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm" id="taskDetailTable">
+                                <thead>
+                                    <tr>
+                                        <th>Task</th>
+                                        <th>Stato</th>
+                                        <th>Ore Stimate</th>
+                                        <th>Ore Effettive</th>
+                                        <th>Tesoretto</th>
+                                        <th>Completamento</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dati popolati dinamicamente da JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Vista per Task (Nuovo) -->
+                <div class="tab-pane fade" id="task-view" role="tabpanel">
+                    <div class="table-responsive mt-3">
+                        <table class="table table-bordered table-sm" id="resourceTaskTable">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Attività</th>
+                                    <th>Progetto</th>
+                                    <th>Cliente</th>
+                                    <th>Tipo Ore</th>
+                                    <th>Stato</th>
+                                    <th>Ore Stimate</th>
+                                    <th>Ore Effettive</th>
+                                    <th>Tesoretto</th>
+                                    <th>% Completamento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Dati popolati dinamicamente da JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4">
+                        <canvas id="taskChart" height="200"></canvas>
                     </div>
                 </div>
             </div>
@@ -273,7 +329,6 @@
 }
 
 /* Definizione delle larghezze delle colonne per evitare espansione eccessiva */
-/* Modifiche alle larghezze delle colonne per adattarsi alle nuove colonne */
 #resourcesTable th:nth-child(1), #resourcesTable td:nth-child(1) { width: 10%; } /* Risorsa */
 #resourcesTable th:nth-child(2), #resourcesTable td:nth-child(2) { width: 8%; } /* Ruolo */
 #resourcesTable th:nth-child(3), #resourcesTable td:nth-child(3) { width: 7%; } /* Ore Standard */
@@ -361,7 +416,7 @@
 }
 
 /* Ridimensiona i grafici per adattarli meglio */
-#globalStatsChart, #clientChart, #projectChart {
+#globalStatsChart, #clientChart, #projectChart, #taskChart {
   max-height: 200px;
   height: 200px;
 }
@@ -386,6 +441,14 @@
     font-weight: bold;
 }
 
+/* Evidenziazione per task in ritardo o sovrastimati */
+.table-danger {
+    background-color: #f8d7da;
+}
+
+.table-warning {
+    background-color: #fff3cd;
+}
 </style>
 @endpush
 
@@ -409,6 +472,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let globalStatsChart = null;
     let clientChart = null;
     let projectChart = null;
+    let taskChart = null; // Nuovo grafico per task
+    let taskDetails = []; // Array per memorizzare i dettagli dei task
     
     // Inizializza la dashboard
     initializeDashboard();
@@ -423,6 +488,209 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.export-btn').forEach(button => {
         button.addEventListener('click', handleExport);
     });
+    
+    // Event listener per il tab tasks
+    document.getElementById('task-tab').addEventListener('click', function() {
+        loadTaskDetails();
+    });
+    
+    /**
+     * Carica i dettagli dei task per la risorsa selezionata
+     */
+    function loadTaskDetails() {
+    if (!currentResourceId) return;
+    
+    // Prepara i filtri
+    const clientIds = $('#client_ids').val() || [];
+    const projectIds = $('#project_ids').val() || [];
+    
+    // Costruisci correttamente la query string
+    const queryParams = new URLSearchParams();
+    
+    // Aggiungi i filtri per client_ids
+    if (clientIds.length > 0) {
+        clientIds.forEach(id => queryParams.append('client_ids[]', id));
+    }
+    
+    // Aggiungi i filtri per project_ids
+    if (projectIds.length > 0) {
+        projectIds.forEach(id => queryParams.append('project_ids[]', id));
+    }
+    
+    // Chiamata AJAX corretta con la nuova gestione dei parametri
+    fetch(`/resource/${currentResourceId}/tasks?${queryParams.toString()}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            taskDetails = data.taskDetails;
+            populateTaskTable(taskDetails);
+            updateTaskChart(taskDetails);
+        } else {
+            console.error('Risposta ricevuta con success=false:', data);
+        }
+    })
+    .catch(error => {
+        console.error('Errore durante il caricamento dei task:', error);
+        // Mostra un messaggio di errore nella tabella
+        const tableBody = document.querySelector('#resourceTaskTable tbody');
+        tableBody.innerHTML = '<tr><td colspan="10" class="text-center text-danger">Errore durante il caricamento dei task. Dettagli in console.</td></tr>';
+    });
+}
+    
+    /**
+     * Popola la tabella dei task
+     */
+    function populateTaskTable(taskDetails) {
+        const tableBody = document.querySelector('#resourceTaskTable tbody');
+        tableBody.innerHTML = '';
+        
+        if (!taskDetails || taskDetails.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="10" class="text-center">Nessun task disponibile</td>';
+            tableBody.appendChild(row);
+            return;
+        }
+        
+        taskDetails.forEach(task => {
+            const row = document.createElement('tr');
+            const treasureClass = task.treasure_hours >= 0 ? 'treasure-positive' : 'treasure-negative';
+            
+            // Aggiungi classe per task in ritardo o sovrastimati
+            if (task.is_overdue) {
+                row.classList.add('table-danger');
+            } else if (task.is_over_estimated) {
+                row.classList.add('table-warning');
+            }
+            
+            row.innerHTML = `
+                <td>${task.name}</td>
+                <td>${task.activity_name}</td>
+                <td>${task.project_name}</td>
+                <td>${task.client_name}</td>
+                <td><span class="badge ${task.hours_type === 'standard' ? 'bg-info' : 'bg-warning'}">${task.hours_type_label}</span></td>
+                <td><span class="badge ${getStatusBadgeClass(task.status)}">${task.status_label}</span></td>
+                <td>${task.estimated_hours.toFixed(2)}</td>
+                <td>${task.actual_hours.toFixed(2)}</td>
+                <td class="${treasureClass}">${task.treasure_hours.toFixed(2)}</td>
+                <td>
+                    <div class="progress">
+                        <div class="progress-bar ${getCompletionBarClass(task.completion_percentage, task.status)}" 
+                             role="progressbar" style="width: ${task.completion_percentage}%">
+                            ${task.completion_percentage.toFixed(0)}%
+                        </div>
+                    </div>
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+    }
+    
+    /**
+     * Ottiene la classe per il badge di stato
+     */
+    function getStatusBadgeClass(status) {
+        switch (status) {
+            case 'pending': return 'bg-warning';
+            case 'in_progress': return 'bg-primary';
+            case 'completed': return 'bg-success';
+            default: return 'bg-secondary';
+        }
+    }
+    
+    /**
+     * Ottiene la classe per la barra di completamento
+     */
+    function getCompletionBarClass(percentage, status) {
+        if (status === 'completed') return 'bg-success';
+        if (percentage >= 100) return 'bg-danger';
+        if (percentage >= 75) return 'bg-warning';
+        return 'bg-primary';
+    }
+    
+    /**
+     * Aggiorna il grafico dei task
+     */
+    function updateTaskChart(taskDetails) {
+        if (!taskChart) {
+            // Inizializza il grafico se non esiste
+            const taskCtx = document.getElementById('taskChart').getContext('2d');
+            taskChart = new Chart(taskCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Ore Stimate',
+                            data: [],
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Ore Effettive',
+                            data: [],
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Tesoretto',
+                            data: [],
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        if (!taskDetails || taskDetails.length === 0) {
+            taskChart.data.labels = [];
+            taskChart.data.datasets[0].data = [];
+            taskChart.data.datasets[1].data = [];
+            taskChart.data.datasets[2].data = [];
+            taskChart.update();
+            return;
+        }
+        
+        // Limita il numero di task mostrati nel grafico per leggibilità
+        const maxTasksInChart = 10;
+        const tasksToShow = taskDetails.length > maxTasksInChart 
+            ? taskDetails.slice(0, maxTasksInChart) 
+            : taskDetails;
+        
+        const labels = tasksToShow.map(task => task.name);
+        const estimatedData = tasksToShow.map(task => task.estimated_hours);
+        const actualData = tasksToShow.map(task => task.actual_hours);
+        const treasureData = tasksToShow.map(task => task.treasure_hours);
+        
+        taskChart.data.labels = labels;
+        taskChart.data.datasets[0].data = estimatedData;
+        taskChart.data.datasets[1].data = actualData;
+        taskChart.data.datasets[2].data = treasureData;
+        
+        taskChart.update();
+    }
     
     /**
      * Gestisce l'esportazione dei dati
@@ -527,56 +795,56 @@ document.addEventListener('DOMContentLoaded', function() {
      * Popola la tabella delle risorse
      */
     function populateResourcesTable() {
-    const tableBody = document.querySelector('#resourcesTable tbody');
-    tableBody.innerHTML = '';
-    
-    resourcesData.forEach(resource => {
-        const row = document.createElement('tr');
+        const tableBody = document.querySelector('#resourcesTable tbody');
+        tableBody.innerHTML = '';
         
-        // Determina le classi CSS per il tesoretto e le ore rimanenti
-        const treasureClass = resource.total_treasure_hours >= 0 ? 'text-success' : 'text-danger';
-        const stdRemainingClass = resource.remaining_standard_hours >= 0 ? 'text-success' : 'text-danger';
-        const extraRemainingClass = resource.remaining_extra_hours >= 0 ? 'text-success' : 'text-danger';
-        
-        row.innerHTML = `
-            <td>${resource.name}</td>
-            <td>${resource.role}</td>
-            <td>${resource.standard_hours_per_year.toFixed(2)}</td>
-            <td class="${stdRemainingClass} fw-bold">${resource.remaining_standard_hours.toFixed(2)}</td>
-            <td>${resource.extra_hours_per_year.toFixed(2)}</td>
-            <td class="${extraRemainingClass} fw-bold">${resource.remaining_extra_hours.toFixed(2)}</td>
-            <td>${resource.total_estimated_hours.toFixed(2)}</td>
-            <td>${resource.total_actual_hours.toFixed(2)}</td>
-            <td class="${treasureClass} fw-bold">${resource.total_treasure_hours.toFixed(2)}</td>
-            <td>
-                <div class="small">Standard: ${resource.standard_hours_usage}%</div>
-                <div class="progress mb-2">
-                    <div class="progress-bar ${resource.standard_hours_usage > 95 ? 'bg-danger' : 'bg-primary'}" 
-                        role="progressbar" style="width: ${Math.min(100, resource.standard_hours_usage)}%"></div>
-                </div>
-                <div class="small">Extra: ${resource.extra_hours_usage}%</div>
-                <div class="progress">
-                    <div class="progress-bar ${resource.extra_hours_usage > 95 ? 'bg-danger' : 'bg-success'}" 
-                        role="progressbar" style="width: ${Math.min(100, resource.extra_hours_usage)}%"></div>
-                </div>
-            </td>
-            <td>
-                <button class="btn btn-sm btn-primary btn-detail" data-resource-id="${resource.id}">
-                    <i class="fas fa-chart-pie"></i> Dettagli
-                </button>
-            </td>
-        `;
-        
-        // Aggiungi l'event listener per il pulsante dettagli
-        const detailButton = row.querySelector('.btn-detail');
-        detailButton.addEventListener('click', function() {
-            const resourceId = this.getAttribute('data-resource-id');
-            showResourceDetail(resourceId);
+        resourcesData.forEach(resource => {
+            const row = document.createElement('tr');
+            
+            // Determina le classi CSS per il tesoretto e le ore rimanenti
+            const treasureClass = resource.total_treasure_hours >= 0 ? 'text-success' : 'text-danger';
+            const stdRemainingClass = resource.remaining_standard_hours >= 0 ? 'text-success' : 'text-danger';
+            const extraRemainingClass = resource.remaining_extra_hours >= 0 ? 'text-success' : 'text-danger';
+            
+            row.innerHTML = `
+                <td>${resource.name}</td>
+                <td>${resource.role}</td>
+                <td>${resource.standard_hours_per_year.toFixed(2)}</td>
+                <td class="${stdRemainingClass} fw-bold">${resource.remaining_standard_hours.toFixed(2)}</td>
+                <td>${resource.extra_hours_per_year.toFixed(2)}</td>
+                <td class="${extraRemainingClass} fw-bold">${resource.remaining_extra_hours.toFixed(2)}</td>
+                <td>${resource.total_estimated_hours.toFixed(2)}</td>
+                <td>${resource.total_actual_hours.toFixed(2)}</td>
+                <td class="${treasureClass} fw-bold">${resource.total_treasure_hours.toFixed(2)}</td>
+                <td>
+                    <div class="small">Standard: ${resource.standard_hours_usage}%</div>
+                    <div class="progress mb-2">
+                        <div class="progress-bar ${resource.standard_hours_usage > 95 ? 'bg-danger' : 'bg-primary'}" 
+                            role="progressbar" style="width: ${Math.min(100, resource.standard_hours_usage)}%"></div>
+                    </div>
+                    <div class="small">Extra: ${resource.extra_hours_usage}%</div>
+                    <div class="progress">
+                        <div class="progress-bar ${resource.extra_hours_usage > 95 ? 'bg-danger' : 'bg-success'}" 
+                            role="progressbar" style="width: ${Math.min(100, resource.extra_hours_usage)}%"></div>
+                    </div>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-primary btn-detail" data-resource-id="${resource.id}">
+                        <i class="fas fa-chart-pie"></i> Dettagli
+                    </button>
+                </td>
+            `;
+            
+            // Aggiungi l'event listener per il pulsante dettagli
+            const detailButton = row.querySelector('.btn-detail');
+            detailButton.addEventListener('click', function() {
+                const resourceId = this.getAttribute('data-resource-id');
+                showResourceDetail(resourceId);
+            });
+            
+            tableBody.appendChild(row);
         });
-        
-        tableBody.appendChild(row);
-    });
-}
+    }
     
     /**
      * Inizializza i grafici
@@ -693,6 +961,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+        
+        // Grafico task (inizializzato nella funzione updateTaskChart)
+        const taskCtx = document.getElementById('taskChart').getContext('2d');
+        taskChart = new Chart(taskCtx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Ore Stimate',
+                        data: [],
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Ore Effettive',
+                        data: [],
+                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Tesoretto',
+                        data: [],
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
     }
     
     /**
@@ -740,6 +1048,7 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function hideResourceDetail() {
         document.getElementById('resourceDetail').style.display = 'none';
+        document.getElementById('taskDetail').style.display = 'none'; // Nasconde anche il dettaglio task
         currentResourceId = null;
     }
     
@@ -833,7 +1142,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!resourceData.by_activity || resourceData.by_activity.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="8" class="text-center">Nessun dato disponibile</td>';
+            row.innerHTML = '<td colspan="9" class="text-center">Nessun dato disponibile</td>';
             tableBody.appendChild(row);
             return;
         }
@@ -880,6 +1189,125 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td>${activity.estimated_hours.toFixed(2)}</td>
                 <td>${activity.actual_hours.toFixed(2)}</td>
                 <td class="${treasureClass}">${activity.treasure_hours.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-sm btn-info view-tasks" data-activity-id="${activity.id}">
+                        <i class="fas fa-tasks"></i> Vedi Task
+                    </button>
+                </td>
+            `;
+            
+            // Aggiungi l'event listener per il pulsante "Vedi Task"
+            const viewTasksButton = row.querySelector('.view-tasks');
+            viewTasksButton.addEventListener('click', function() {
+                const activityId = this.getAttribute('data-activity-id');
+                loadActivityTasks(activityId, activity.name);
+            });
+            
+            tableBody.appendChild(row);
+        });
+    }
+    
+    /**
+     * Carica i task di un'attività specifica
+     */
+    function loadActivityTasks(activityId, activityName) {
+    if (!currentResourceId) return;
+    
+    // Aggiorna il nome dell'attività nel dettaglio
+    document.getElementById('activityDetailName').textContent = activityName;
+    
+    // Prepara i filtri
+    const clientIds = $('#client_ids').val() || [];
+    const projectIds = $('#project_ids').val() || [];
+    
+    // Costruisci correttamente la query string
+    const queryParams = new URLSearchParams();
+    
+    // Aggiungi l'activity_id
+    queryParams.append('activity_id', activityId);
+    
+    // Aggiungi i filtri per client_ids
+    if (clientIds.length > 0) {
+        clientIds.forEach(id => queryParams.append('client_ids[]', id));
+    }
+    
+    // Aggiungi i filtri per project_ids
+    if (projectIds.length > 0) {
+        projectIds.forEach(id => queryParams.append('project_ids[]', id));
+    }
+    
+    // Chiamata AJAX corretta 
+    fetch(`/resource/${currentResourceId}/tasks?${queryParams.toString()}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            populateTaskDetailTable(data.taskDetails);
+            // Mostra la sezione dei dettagli task
+            document.getElementById('taskDetail').style.display = 'block';
+            // Scorri alla visualizzazione dettagli task
+            document.getElementById('taskDetail').scrollIntoView({ behavior: 'smooth' });
+        } else {
+            console.error('Risposta ricevuta con success=false:', data);
+            document.getElementById('taskDetail').style.display = 'none';
+        }
+    })
+    .catch(error => {
+        console.error('Errore durante il caricamento dei task:', error);
+        // Mostra un messaggio di errore
+        document.getElementById('taskDetail').style.display = 'none';
+        alert('Errore durante il caricamento dei task dell\'attività.');
+    });
+}
+    
+    /**
+     * Popola la tabella dei dettagli task
+     */
+    function populateTaskDetailTable(taskDetails) {
+        const tableBody = document.querySelector('#taskDetailTable tbody');
+        tableBody.innerHTML = '';
+        
+        if (!taskDetails || taskDetails.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="6" class="text-center">Nessun task disponibile per questa attività</td>';
+            tableBody.appendChild(row);
+            return;
+        }
+        
+        taskDetails.forEach(task => {
+            const row = document.createElement('tr');
+            const treasureClass = task.treasure_hours >= 0 ? 'treasure-positive' : 'treasure-negative';
+            
+            // Aggiungi classe per task in ritardo o sovrastimati
+            if (task.is_overdue) {
+                row.classList.add('table-danger');
+            } else if (task.is_over_estimated) {
+                row.classList.add('table-warning');
+            }
+            
+            row.innerHTML = `
+                <td>${task.name}</td>
+                <td><span class="badge ${getStatusBadgeClass(task.status)}">${task.status_label}</span></td>
+                <td>${task.estimated_hours.toFixed(2)}</td>
+                <td>${task.actual_hours.toFixed(2)}</td>
+                <td class="${treasureClass}">${task.treasure_hours.toFixed(2)}</td>
+                <td>
+                    <div class="progress">
+                        <div class="progress-bar ${getCompletionBarClass(task.completion_percentage, task.status)}" 
+                             role="progressbar" style="width: ${task.completion_percentage}%">
+                            ${task.completion_percentage.toFixed(0)}%
+                        </div>
+                    </div>
+                </td>
             `;
             
             tableBody.appendChild(row);
@@ -973,6 +1401,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         populateActivityTable(resourceData);
                         updateClientChart(resourceData);
                         updateProjectChart(resourceData);
+                        
+                        // Se il tab task è attivo, ricarica i dati dei task
+                        if (document.getElementById('task-tab').classList.contains('active')) {
+                            loadTaskDetails();
+                        }
                     } else {
                         hideResourceDetail();
                     }
