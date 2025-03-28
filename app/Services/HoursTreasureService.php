@@ -9,6 +9,7 @@ use App\Models\Activity;
 use App\Models\Task;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class HoursTreasureService
 {
@@ -23,7 +24,7 @@ class HoursTreasureService
     {
         // Se non vengono fornite risorse, carica tutte le risorse attive
         if ($resources === null) {
-            $resources = Resource::with(['projects', 'activities.project.client', 'activities.tasks'])
+            $resources = Resource::with(['projects', 'activities', 'primaryActivities.project.client', 'primaryActivities.tasks'])
                 ->where('is_active', true)
                 ->get();
         }
@@ -70,8 +71,45 @@ class HoursTreasureService
                 'by_activity' => []
             ];
             
+            // Raccogli tutte le attività associate a questa risorsa
+            $allActivities = collect();
+            
+            // 1. Attività dove questa risorsa è la principale (legacy)
+            $legacyActivities = $resource->primaryActivities()
+                ->with(['project.client', 'tasks'])
+                ->where('has_multiple_resources', false)
+                ->get();
+            
+            foreach ($legacyActivities as $activity) {
+                $allActivities->push([
+                    'activity' => $activity,
+                    'estimated_minutes' => $activity->estimated_minutes,
+                    'actual_minutes' => $activity->actual_minutes,
+                    'hours_type' => $activity->hours_type,
+                    'is_pivot' => false
+                ]);
+            }
+            
+            // 2. Attività dove questa risorsa è una delle multiple (relazione many-to-many)
+            $pivotActivities = $resource->activities()
+                ->with(['project.client', 'tasks'])
+                ->get();
+            
+            foreach ($pivotActivities as $activity) {
+                $pivotData = $activity->pivot;
+                $allActivities->push([
+                    'activity' => $activity,
+                    'estimated_minutes' => $pivotData->estimated_minutes,
+                    'actual_minutes' => $pivotData->actual_minutes,
+                    'hours_type' => $pivotData->hours_type,
+                    'is_pivot' => true
+                ]);
+            }
+            
             // Filtra le attività in base ai parametri forniti
-            $filteredActivities = $resource->activities->filter(function ($activity) use ($projectIds, $clientIds) {
+            $filteredActivities = $allActivities->filter(function ($activityData) use ($projectIds, $clientIds) {
+                $activity = $activityData['activity'];
+                
                 // Verifica se l'attività appartiene a un progetto selezionato
                 if (!empty($projectIds) && !in_array($activity->project_id, $projectIds)) {
                     return false;
@@ -86,7 +124,10 @@ class HoursTreasureService
             });
             
             // Elabora le attività filtrate
-            foreach ($filteredActivities as $activity) {
+            foreach ($filteredActivities as $activityData) {
+                $activity = $activityData['activity'];
+                $isPivot = $activityData['is_pivot'];
+                
                 // Ignora se non c'è progetto o cliente
                 if (!$activity->project || !$activity->project->client) {
                     continue;
@@ -97,9 +138,14 @@ class HoursTreasureService
                 $projectId = $activity->project->id;
                 $projectName = $activity->project->name;
                 
+                // Usa i dati corretti in base se è pivot o legacy
+                $estimatedMinutes = $activityData['estimated_minutes'];
+                $actualMinutes = $activityData['actual_minutes'];
+                $hoursType = $activityData['hours_type'];
+                
                 // Converti minuti in ore
-                $estimatedHours = $activity->estimated_minutes / 60;
-                $actualHours = $activity->actual_minutes / 60;
+                $estimatedHours = $estimatedMinutes / 60;
+                $actualHours = $actualMinutes / 60;
                 
                 // Calcola il tesoretto solo per attività completate
                 $treasureHours = 0;
@@ -110,9 +156,6 @@ class HoursTreasureService
                     // Debug: stampa i valori per verificare i calcoli
                     Log::debug("Activity: {$activity->name}, Estimated: {$estimatedHours}, Actual: {$actualHours}, Treasure: {$treasureHours}");
                 }
-                
-                // Determina il tipo di ore (standard o extra)
-                $hoursType = $activity->hours_type ?: 'standard';
                 
                 // Aggiungi al totale della risorsa
                 $resourceData['total_estimated_hours'] += $estimatedHours;
@@ -196,7 +239,9 @@ class HoursTreasureService
                     'actual_hours' => $actualHours,
                     'treasure_hours' => $treasureHours,
                     'hours_type' => $hoursType,
-                    'status' => $activity->status
+                    'status' => $activity->status,
+                    'resource_contribution' => $isPivot ? ($activity->estimated_minutes > 0 ? 
+                        ($estimatedMinutes / $activity->estimated_minutes) * 100 : 100) : 100
                 ];
             }
             
@@ -231,8 +276,8 @@ class HoursTreasureService
      */
     public function getTaskDetailsByResource($resourceId, array $filters = [])
     {
-        // Carica la risorsa specifica con le sue attività e task
-        $resource = Resource::with(['activities.project.client', 'activities.tasks'])
+        // Carica la risorsa specifica
+        $resource = Resource::with(['activities.project.client', 'activities.tasks', 'primaryActivities.project.client', 'primaryActivities.tasks'])
             ->where('id', $resourceId)
             ->where('is_active', true)
             ->firstOrFail();
@@ -242,8 +287,45 @@ class HoursTreasureService
         $clientIds = $filters['client_ids'] ?? [];
         $activityId = $filters['activity_id'] ?? null;
         
+        // Raccogli tutte le attività associate a questa risorsa
+        $allActivities = collect();
+        
+        // 1. Attività dove questa risorsa è la principale (legacy)
+        $legacyActivities = $resource->primaryActivities()
+            ->with(['project.client', 'tasks'])
+            ->where('has_multiple_resources', false)
+            ->get();
+        
+        foreach ($legacyActivities as $activity) {
+            $allActivities->push([
+                'activity' => $activity,
+                'estimated_minutes' => $activity->estimated_minutes,
+                'actual_minutes' => $activity->actual_minutes,
+                'hours_type' => $activity->hours_type,
+                'is_pivot' => false
+            ]);
+        }
+        
+        // 2. Attività dove questa risorsa è una delle multiple (relazione many-to-many)
+        $pivotActivities = $resource->activities()
+            ->with(['project.client', 'tasks'])
+            ->get();
+        
+        foreach ($pivotActivities as $activity) {
+            $pivotData = $activity->pivot;
+            $allActivities->push([
+                'activity' => $activity,
+                'estimated_minutes' => $pivotData->estimated_minutes,
+                'actual_minutes' => $pivotData->actual_minutes,
+                'hours_type' => $pivotData->hours_type,
+                'is_pivot' => true
+            ]);
+        }
+        
         // Filtra le attività
-        $filteredActivities = $resource->activities->filter(function ($activity) use ($projectIds, $clientIds, $activityId) {
+        $filteredActivities = $allActivities->filter(function ($activityData) use ($projectIds, $clientIds, $activityId) {
+            $activity = $activityData['activity'];
+            
             // Se è specificato un ID attività specifico, filtra solo per quello
             if ($activityId && $activity->id != $activityId) {
                 return false;
@@ -265,7 +347,13 @@ class HoursTreasureService
         // Prepara l'array di risposta
         $taskDetails = [];
         
-        foreach ($filteredActivities as $activity) {
+        foreach ($filteredActivities as $activityData) {
+            $activity = $activityData['activity'];
+            $isPivot = $activityData['is_pivot'];
+            $resourceEstimatedMinutes = $activityData['estimated_minutes'];
+            $resourceActualMinutes = $activityData['actual_minutes'];
+            $hoursType = $activityData['hours_type'];
+            
             // Ignora se non c'è progetto o cliente
             if (!$activity->project || !$activity->project->client) {
                 continue;
@@ -274,9 +362,18 @@ class HoursTreasureService
             // Recupera i task dell'attività
             if ($activity->tasks && $activity->tasks->count() > 0) {
                 foreach ($activity->tasks as $task) {
+                    // Calcola la proporzione di minuti stimati per questa risorsa
+                    $resourceProportion = $activity->estimated_minutes > 0 
+                        ? $resourceEstimatedMinutes / $activity->estimated_minutes 
+                        : 1;
+                    
+                    // Calcola minuti stimati ed effettivi proporzionali alla contribuzione della risorsa
+                    $taskEstimatedMinutes = $task->estimated_minutes * $resourceProportion;
+                    $taskActualMinutes = $task->actual_minutes * $resourceProportion;
+                    
                     // Converti minuti in ore
-                    $estimatedHours = $task->estimated_minutes / 60;
-                    $actualHours = $task->actual_minutes / 60;
+                    $estimatedHours = $taskEstimatedMinutes / 60;
+                    $actualHours = $taskActualMinutes / 60;
                     
                     // Calcola il tesoretto solo per task completati
                     $treasureHours = 0;
@@ -293,7 +390,6 @@ class HoursTreasureService
                         default: $statusLabel = 'N/D'; break;
                     }
                     
-                    $hoursType = $activity->hours_type ?: 'standard';
                     $hoursTypeLabel = ($hoursType === 'standard') ? 'Standard' : 'Extra';
                     
                     // Aggiungi i dettagli del task
@@ -315,13 +411,16 @@ class HoursTreasureService
                         'status_label' => $statusLabel,
                         'completion_percentage' => $task->progress_percentage,
                         'is_overdue' => $task->is_overdue,
-                        'is_over_estimated' => $task->is_over_estimated
+                        'is_over_estimated' => $task->is_over_estimated,
+                        'resource_contribution' => $isPivot ? round($resourceProportion * 100, 1) : 100
                     ];
                 }
             } else {
                 // Se non ci sono task, usa i dati dell'attività stessa
-                $estimatedHours = $activity->estimated_minutes / 60;
-                $actualHours = $activity->actual_minutes / 60;
+                
+                // Converti minuti in ore
+                $estimatedHours = $resourceEstimatedMinutes / 60;
+                $actualHours = $resourceActualMinutes / 60;
                 
                 // Calcola il tesoretto solo per attività completate
                 $treasureHours = 0;
@@ -338,7 +437,6 @@ class HoursTreasureService
                     default: $statusLabel = 'N/D'; break;
                 }
                 
-                $hoursType = $activity->hours_type ?: 'standard';
                 $hoursTypeLabel = ($hoursType === 'standard') ? 'Standard' : 'Extra';
                 
                 // Calcola percentuale di completamento
@@ -365,7 +463,9 @@ class HoursTreasureService
                     'status_label' => $statusLabel,
                     'completion_percentage' => $completionPercentage,
                     'is_overdue' => false,
-                    'is_over_estimated' => $actualHours > $estimatedHours && $estimatedHours > 0
+                    'is_over_estimated' => $actualHours > $estimatedHours && $estimatedHours > 0,
+                    'resource_contribution' => $isPivot ? ($activity->estimated_minutes > 0 ? 
+                        round(($resourceEstimatedMinutes / $activity->estimated_minutes) * 100, 1) : 100) : 100
                 ];
             }
         }

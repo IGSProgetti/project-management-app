@@ -43,6 +43,24 @@ class Resource extends Model
     }
 
     /**
+     * Relazione many-to-many con le attività.
+     */
+    public function activities()
+    {
+        return $this->belongsToMany(Activity::class)
+            ->withPivot('estimated_minutes', 'actual_minutes', 'hours_type', 'estimated_cost', 'actual_cost')
+            ->withTimestamps();
+    }
+
+    /**
+     * Relazione one-to-many con le attività (legacy support).
+     */
+    public function primaryActivities()
+    {
+        return $this->hasMany(Activity::class);
+    }
+
+    /**
      * Ottiene i progetti con ore standard
      */
     public function standardProjects()
@@ -62,11 +80,6 @@ class Resource extends Model
             ->withPivot('hours', 'adjusted_rate', 'cost')
             ->withTimestamps()
             ->wherePivot('hours_type', 'extra');
-    }
-
-    public function activities()
-    {
-        return $this->hasMany(Activity::class);
     }
 
     /**
@@ -128,23 +141,107 @@ class Resource extends Model
     }
     
     /**
-     * Calcola il totale delle ore standard effettivamente utilizzate.
+     * Calcola il totale dei minuti standard stimati per tutte le attività.
      */
-    public function getTotalStandardActualHoursAttribute()
+    public function getTotalStandardEstimatedMinutesAttribute()
     {
-        return $this->activities()
+        $fromPrimary = $this->primaryActivities()
+            ->where('has_multiple_resources', false)
             ->where('hours_type', 'standard')
-            ->sum('actual_minutes') / 60; // Converti minuti in ore
+            ->sum('estimated_minutes');
+            
+        $fromMultiple = DB::table('activity_resource')
+            ->where('resource_id', $this->id)
+            ->where('hours_type', 'standard')
+            ->sum('estimated_minutes');
+            
+        return $fromPrimary + $fromMultiple;
     }
     
     /**
-     * Calcola il totale delle ore extra effettivamente utilizzate.
+     * Calcola il totale dei minuti extra stimati per tutte le attività.
+     */
+    public function getTotalExtraEstimatedMinutesAttribute()
+    {
+        $fromPrimary = $this->primaryActivities()
+            ->where('has_multiple_resources', false)
+            ->where('hours_type', 'extra')
+            ->sum('estimated_minutes');
+            
+        $fromMultiple = DB::table('activity_resource')
+            ->where('resource_id', $this->id)
+            ->where('hours_type', 'extra')
+            ->sum('estimated_minutes');
+            
+        return $fromPrimary + $fromMultiple;
+    }
+    
+    /**
+     * Calcola il totale dei minuti standard effettivi per tutte le attività.
+     */
+    public function getTotalStandardActualMinutesAttribute()
+    {
+        $fromPrimary = $this->primaryActivities()
+            ->where('has_multiple_resources', false)
+            ->where('hours_type', 'standard')
+            ->sum('actual_minutes');
+            
+        $fromMultiple = DB::table('activity_resource')
+            ->where('resource_id', $this->id)
+            ->where('hours_type', 'standard')
+            ->sum('actual_minutes');
+            
+        return $fromPrimary + $fromMultiple;
+    }
+    
+    /**
+     * Calcola il totale dei minuti extra effettivi per tutte le attività.
+     */
+    public function getTotalExtraActualMinutesAttribute()
+    {
+        $fromPrimary = $this->primaryActivities()
+            ->where('has_multiple_resources', false)
+            ->where('hours_type', 'extra')
+            ->sum('actual_minutes');
+            
+        $fromMultiple = DB::table('activity_resource')
+            ->where('resource_id', $this->id)
+            ->where('hours_type', 'extra')
+            ->sum('actual_minutes');
+            
+        return $fromPrimary + $fromMultiple;
+    }
+    
+    /**
+     * Calcola il totale delle ore standard stimate per tutte le attività.
+     */
+    public function getTotalStandardEstimatedHoursFromActivitiesAttribute()
+    {
+        return $this->total_standard_estimated_minutes / 60;
+    }
+    
+    /**
+     * Calcola il totale delle ore extra stimate per tutte le attività.
+     */
+    public function getTotalExtraEstimatedHoursFromActivitiesAttribute()
+    {
+        return $this->total_extra_estimated_minutes / 60;
+    }
+    
+    /**
+     * Calcola il totale delle ore standard effettive per tutte le attività.
+     */
+    public function getTotalStandardActualHoursAttribute()
+    {
+        return $this->total_standard_actual_minutes / 60;
+    }
+    
+    /**
+     * Calcola il totale delle ore extra effettive per tutte le attività.
      */
     public function getTotalExtraActualHoursAttribute()
     {
-        return $this->activities()
-            ->where('hours_type', 'extra')
-            ->sum('actual_minutes') / 60; // Converti minuti in ore
+        return $this->total_extra_actual_minutes / 60;
     }
     
     /**
@@ -152,7 +249,7 @@ class Resource extends Model
      */
     public function getRemainingStandardEstimatedHoursAttribute()
     {
-        return max(0, $this->standard_hours_per_year - $this->total_standard_estimated_hours);
+        return max(0, $this->standard_hours_per_year - $this->total_standard_estimated_hours_from_activities);
     }
     
     /**
@@ -160,7 +257,7 @@ class Resource extends Model
      */
     public function getRemainingExtraEstimatedHoursAttribute()
     {
-        return max(0, $this->extra_hours_per_year - $this->total_extra_estimated_hours);
+        return max(0, $this->extra_hours_per_year - $this->total_extra_estimated_hours_from_activities);
     }
     
     /**

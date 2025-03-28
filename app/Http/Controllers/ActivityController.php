@@ -16,7 +16,7 @@ class ActivityController extends Controller
      */
     public function index()
     {
-        $activities = Activity::with(['project', 'resource', 'area'])->get();
+        $activities = Activity::with(['project', 'resources', 'area'])->get();
         $projects = Project::all();
         $resources = Resource::all();
         return view('activities.index', compact('activities', 'projects', 'resources'));
@@ -45,7 +45,7 @@ class ActivityController extends Controller
         }
         
         return view('activities.create', compact('projects', 'areas', 'resources', 'selectedProjectId', 'selectedArea'));
-    }
+    }  
 
     /**
      * Store a newly created resource in storage.
@@ -56,11 +56,14 @@ class ActivityController extends Controller
             'name' => 'required|string|max:255',
             'project_id' => 'required|exists:projects,id',
             'area_id' => 'nullable|exists:areas,id',
-            'resource_id' => 'required|exists:resources,id',
+            'resource_ids' => 'required|array|min:1',
+            'resource_ids.*' => 'required|exists:resources,id',
             'estimated_minutes' => 'required|integer|min:1',
             'due_date' => 'nullable|date',
             'status' => 'nullable|in:pending,in_progress,completed',
             'hours_type' => 'required|in:standard,extra',
+            'resource_distribution' => 'nullable|array',
+            'resource_distribution.*' => 'nullable|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -86,41 +89,108 @@ class ActivityController extends Controller
             }
         }
 
-        // Calcola il costo stimato
-        $resource = Resource::findOrFail($request->resource_id);
-        $project = Project::findOrFail($request->project_id);
+        // Determina se stiamo usando risorse multiple
+        $hasMultipleResources = count($request->resource_ids) > 1;
         
-        // Ottieni la tariffa oraria della risorsa per questo progetto in base al tipo di ore
-        $hourlyRate = null;
-        $projectResource = $project->resources()
-            ->where('resources.id', $resource->id)
-            ->wherePivot('hours_type', $request->hours_type)
-            ->first();
+        // Se è una singola risorsa, usa la relazione principale per compatibilità legacy
+        $mainResourceId = $request->resource_ids[0];
+        $resource = Resource::findOrFail($mainResourceId);
         
-        if ($projectResource) {
-            $hourlyRate = $projectResource->pivot->adjusted_rate;
-        } else {
-            // Se la risorsa non è collegata al progetto con questo tipo di ore, usa la tariffa di base
-            if ($request->hours_type == 'standard') {
-                $baseRate = $resource->selling_price;
+        // Array per tenere traccia dei minuti e costi stimati per risorsa
+        $resourceData = [];
+        
+        // Gestisci la distribuzione dei minuti tra le risorse
+        $resourceDistribution = $request->resource_distribution ?? [];
+        $resourceMinutes = [];
+        
+        if ($hasMultipleResources) {
+            $totalDistributed = array_sum($resourceDistribution);
+            $remainingMinutes = $request->estimated_minutes - $totalDistributed;
+            
+            // Se la distribuzione non è completa, distribuisci equamente i minuti rimanenti
+            if ($remainingMinutes > 0) {
+                $equalShare = floor($remainingMinutes / count($request->resource_ids));
+                $extraMinute = $remainingMinutes % count($request->resource_ids);
+                
+                foreach ($request->resource_ids as $index => $resourceId) {
+                    $resourceMinutes[$resourceId] = ($resourceDistribution[$resourceId] ?? 0) + $equalShare;
+                    
+                    // Distribuisce gli eventuali minuti extra (arrotondamento)
+                    if ($extraMinute > 0) {
+                        $resourceMinutes[$resourceId]++;
+                        $extraMinute--;
+                    }
+                }
             } else {
-                $baseRate = $resource->extra_selling_price ?: $resource->selling_price * 1.2;
+                // Usa la distribuzione fornita
+                foreach ($request->resource_ids as $resourceId) {
+                    $resourceMinutes[$resourceId] = $resourceDistribution[$resourceId] ?? 0;
+                }
             }
-            $hourlyRate = $project->calculateAdjustedRate($baseRate);
         }
         
-        // Calcola il costo in base ai minuti stimati
-        $estimatedCost = ($request->estimated_minutes / 60) * $hourlyRate;
+        // Calcola il costo stimato per ogni risorsa e il totale
+        $project = Project::findOrFail($request->project_id);
+        $totalEstimatedCost = 0;
         
+        foreach ($request->resource_ids as $resourceId) {
+            $resource = Resource::findOrFail($resourceId);
+            $resourceMinutesValue = $hasMultipleResources ? $resourceMinutes[$resourceId] : $request->estimated_minutes;
+            
+            // Ottieni la tariffa oraria della risorsa per questo progetto in base al tipo di ore
+            $hourlyRate = null;
+            $projectResource = $project->resources()
+                ->where('resources.id', $resource->id)
+                ->wherePivot('hours_type', $request->hours_type)
+                ->first();
+            
+            if ($projectResource) {
+                $hourlyRate = $projectResource->pivot->adjusted_rate;
+            } else {
+                // Se la risorsa non è collegata al progetto con questo tipo di ore, usa la tariffa di base
+                if ($request->hours_type == 'standard') {
+                    $baseRate = $resource->selling_price;
+                } else {
+                    $baseRate = $resource->extra_selling_price ?: $resource->selling_price * 1.2;
+                }
+                $hourlyRate = $project->calculateAdjustedRate($baseRate);
+            }
+            
+            // Calcola il costo in base ai minuti stimati per questa risorsa
+            $estimatedCost = ($resourceMinutesValue / 60) * $hourlyRate;
+            $totalEstimatedCost += $estimatedCost;
+            
+            // Salva i dati per utilizzarli nell'associazione risorse-attività
+            $resourceData[$resourceId] = [
+                'estimated_minutes' => $resourceMinutesValue,
+                'actual_minutes' => 0,
+                'hours_type' => $request->hours_type,
+                'estimated_cost' => $estimatedCost,
+                'actual_cost' => 0
+            ];
+        }
+        
+        // Crea l'attività con impostazioni base
         $activity = new Activity();
-        $activity->fill($request->all());
-        $activity->estimated_cost = $estimatedCost;
+        $activity->name = $request->name;
+        $activity->project_id = $request->project_id;
+        $activity->area_id = $request->area_id;
+        $activity->resource_id = $mainResourceId; // Per compatibilità legacy
+        $activity->has_multiple_resources = $hasMultipleResources;
+        $activity->estimated_minutes = $request->estimated_minutes;
         $activity->actual_minutes = 0;
-        $activity->actual_cost = 0;
-        $activity->status = $request->status ?? 'pending';
         $activity->hours_type = $request->hours_type;
+        $activity->estimated_cost = $totalEstimatedCost;
+        $activity->actual_cost = 0;
+        $activity->due_date = $request->due_date;
+        $activity->status = $request->status ?? 'pending';
         $activity->save();
-
+        
+        // Associa le risorse all'attività
+        foreach ($resourceData as $resourceId => $data) {
+            $activity->resources()->attach($resourceId, $data);
+        }
+        
         // Se l'attività è associata a un'area, aggiorna i minuti effettivi dell'area
         if ($activity->area_id) {
             $area = Area::find($activity->area_id);
@@ -138,7 +208,7 @@ class ActivityController extends Controller
      */
     public function show(string $id)
     {
-        $activity = Activity::with(['project', 'area', 'resource', 'tasks'])->findOrFail($id);
+        $activity = Activity::with(['project', 'area', 'resource', 'resources', 'tasks'])->findOrFail($id);
         return view('activities.show', compact('activity'));
     }
 
@@ -147,12 +217,20 @@ class ActivityController extends Controller
      */
     public function edit(string $id)
     {
-        $activity = Activity::findOrFail($id);
+        $activity = Activity::with('resources')->findOrFail($id);
         $projects = Project::all();
         $areas = Area::where('project_id', $activity->project_id)->get();
         $resources = Resource::where('is_active', true)->get();
         
-        return view('activities.edit', compact('activity', 'projects', 'areas', 'resources'));
+        // Prepara la distribuzione delle risorse per il form
+        $resourceDistribution = [];
+        if ($activity->has_multiple_resources) {
+            foreach ($activity->resources as $resource) {
+                $resourceDistribution[$resource->id] = $resource->pivot->estimated_minutes;
+            }
+        }
+        
+        return view('activities.edit', compact('activity', 'projects', 'areas', 'resources', 'resourceDistribution'));
     }
 
     /**
@@ -164,12 +242,15 @@ class ActivityController extends Controller
             'name' => 'required|string|max:255',
             'project_id' => 'required|exists:projects,id',
             'area_id' => 'nullable|exists:areas,id',
-            'resource_id' => 'required|exists:resources,id',
+            'resource_ids' => 'required|array|min:1',
+            'resource_ids.*' => 'required|exists:resources,id',
             'estimated_minutes' => 'required|integer|min:1',
             'actual_minutes' => 'nullable|integer|min:0',
             'due_date' => 'nullable|date',
             'status' => 'nullable|in:pending,in_progress,completed',
             'hours_type' => 'required|in:standard,extra',
+            'resource_distribution' => 'nullable|array',
+            'resource_distribution.*' => 'nullable|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -199,47 +280,125 @@ class ActivityController extends Controller
             }
         }
         
-        // Calcola il costo stimato
-        $resource = Resource::findOrFail($request->resource_id);
+        // Determina se stiamo usando risorse multiple
+        $hasMultipleResources = count($request->resource_ids) > 1;
+        
+        // Il primo nella lista diventa la risorsa principale per compatibilità legacy
+        $mainResourceId = $request->resource_ids[0];
+        
+        // Array per tenere traccia della distribuzione delle risorse
+        $resourceMinutes = [];
+        $resourceData = [];
+        $totalEstimatedCost = 0;
+        
+        // Gestisci la distribuzione dei minuti tra le risorse
+        $resourceDistribution = $request->resource_distribution ?? [];
+        if ($hasMultipleResources) {
+            $totalDistributed = array_sum($resourceDistribution);
+            $remainingMinutes = $request->estimated_minutes - $totalDistributed;
+            
+            // Se la distribuzione non è completa, distribuisci equamente i minuti rimanenti
+            if ($remainingMinutes > 0) {
+                $equalShare = floor($remainingMinutes / count($request->resource_ids));
+                $extraMinute = $remainingMinutes % count($request->resource_ids);
+                
+                foreach ($request->resource_ids as $resourceId) {
+                    $resourceMinutes[$resourceId] = ($resourceDistribution[$resourceId] ?? 0) + $equalShare;
+                    
+                    // Distribuisce gli eventuali minuti extra (arrotondamento)
+                    if ($extraMinute > 0) {
+                        $resourceMinutes[$resourceId]++;
+                        $extraMinute--;
+                    }
+                }
+            } else {
+                // Usa la distribuzione fornita
+                foreach ($request->resource_ids as $resourceId) {
+                    $resourceMinutes[$resourceId] = $resourceDistribution[$resourceId] ?? 0;
+                }
+            }
+        }
+        
+        // Calcola il costo stimato per ogni risorsa e il totale
         $project = Project::findOrFail($request->project_id);
         
-        // Ottieni la tariffa oraria della risorsa per questo progetto in base al tipo di ore
-        $hourlyRate = null;
-        $projectResource = $project->resources()
-            ->where('resources.id', $resource->id)
-            ->wherePivot('hours_type', $request->hours_type)
-            ->first();
-        
-        if ($projectResource) {
-            $hourlyRate = $projectResource->pivot->adjusted_rate;
-        } else {
-            // Se la risorsa non è collegata al progetto con questo tipo di ore, usa la tariffa di base
-            if ($request->hours_type == 'standard') {
-                $baseRate = $resource->selling_price;
+        foreach ($request->resource_ids as $resourceId) {
+            $resource = Resource::findOrFail($resourceId);
+            $resourceMinutesValue = $hasMultipleResources ? $resourceMinutes[$resourceId] : $request->estimated_minutes;
+            
+            // Ottieni la tariffa oraria della risorsa per questo progetto in base al tipo di ore
+            $hourlyRate = null;
+            $projectResource = $project->resources()
+                ->where('resources.id', $resource->id)
+                ->wherePivot('hours_type', $request->hours_type)
+                ->first();
+            
+            if ($projectResource) {
+                $hourlyRate = $projectResource->pivot->adjusted_rate;
             } else {
-                $baseRate = $resource->extra_selling_price ?: $resource->selling_price * 1.2;
+                // Se la risorsa non è collegata al progetto con questo tipo di ore, usa la tariffa di base
+                if ($request->hours_type == 'standard') {
+                    $baseRate = $resource->selling_price;
+                } else {
+                    $baseRate = $resource->extra_selling_price ?: $resource->selling_price * 1.2;
+                }
+                $hourlyRate = $project->calculateAdjustedRate($baseRate);
             }
-            $hourlyRate = $project->calculateAdjustedRate($baseRate);
+            
+            // Calcola il costo in base ai minuti stimati per questa risorsa
+            $estimatedCost = ($resourceMinutesValue / 60) * $hourlyRate;
+            $totalEstimatedCost += $estimatedCost;
+            
+            // Calcola i minuti e costi effettivi per questa risorsa
+            $resourceActualMinutes = 0;
+            $resourceActualCost = 0;
+            
+            if ($request->has('actual_minutes') && $request->actual_minutes > 0) {
+                // Distribuisci i minuti effettivi proporzionalmente
+                if ($hasMultipleResources && $request->estimated_minutes > 0) {
+                    $proportion = $resourceMinutesValue / $request->estimated_minutes;
+                    $resourceActualMinutes = round($request->actual_minutes * $proportion);
+                } else {
+                    $resourceActualMinutes = $request->actual_minutes;
+                }
+                
+                $resourceActualCost = ($resourceActualMinutes / 60) * $hourlyRate;
+            }
+            
+            // Salva i dati per utilizzarli nell'associazione risorse-attività
+            $resourceData[$resourceId] = [
+                'estimated_minutes' => $resourceMinutesValue,
+                'actual_minutes' => $resourceActualMinutes,
+                'hours_type' => $request->hours_type,
+                'estimated_cost' => $estimatedCost,
+                'actual_cost' => $resourceActualCost
+            ];
         }
         
-        // Calcola il costo in base ai minuti stimati
-        $estimatedCost = ($request->estimated_minutes / 60) * $hourlyRate;
-        
-        // Calcola il costo effettivo se sono stati forniti i minuti effettivi
-        $actualCost = 0;
-        if ($request->has('actual_minutes') && $request->actual_minutes > 0) {
-            $actualCost = ($request->actual_minutes / 60) * $hourlyRate;
-        }
-        
-        $activity->fill($request->all());
-        $activity->estimated_cost = $estimatedCost;
+        // Aggiorna le informazioni di base dell'attività
+        $activity->name = $request->name;
+        $activity->project_id = $request->project_id;
+        $activity->area_id = $request->area_id;
+        $activity->resource_id = $mainResourceId; // Per compatibilità legacy
+        $activity->has_multiple_resources = $hasMultipleResources;
+        $activity->estimated_minutes = $request->estimated_minutes;
+        $activity->hours_type = $request->hours_type;
+        $activity->estimated_cost = $totalEstimatedCost;
+        $activity->due_date = $request->due_date;
+        $activity->status = $request->status;
         
         if ($request->has('actual_minutes')) {
             $activity->actual_minutes = $request->actual_minutes;
-            $activity->actual_cost = $actualCost;
+            $activity->actual_cost = array_sum(array_column($resourceData, 'actual_cost'));
         }
         
         $activity->save();
+        
+        // Aggiorna le associazioni con le risorse
+        $activity->resources()->detach(); // Rimuovi tutte le associazioni esistenti
+        foreach ($resourceData as $resourceId => $data) {
+            $activity->resources()->attach($resourceId, $data);
+        }
         
         // Se è cambiata l'area, aggiorna i minuti di entrambe le aree
         if ($originalAreaId != $request->area_id) {
@@ -352,30 +511,38 @@ class ActivityController extends Controller
         if ($request->status == 'completed' && $activity->actual_minutes == 0) {
             $activity->actual_minutes = $activity->estimated_minutes;
             
-            // Calcola il costo effettivo basato sui minuti stimati
-            $resource = Resource::findOrFail($activity->resource_id);
-            $project = Project::findOrFail($activity->project_id);
-            
-            // Ottieni la tariffa oraria della risorsa considerando il tipo di ore
-            $hourlyRate = null;
-            $projectResource = $project->resources()
-                ->where('resources.id', $resource->id)
-                ->wherePivot('hours_type', $activity->hours_type)
-                ->first();
-            
-            if ($projectResource) {
-                $hourlyRate = $projectResource->pivot->adjusted_rate;
+            if ($activity->has_multiple_resources) {
+                // Distribuzione proporzionale tra le risorse
+                $activity->distributeActualMinutesToResources($activity->actual_minutes);
+                
+                // Calcola il costo effettivo basato sui minuti distribuiti
+                $activity->updateActualCost();
             } else {
-                // Se la risorsa non è collegata al progetto con questo tipo di ore, usa la tariffa di base
-                if ($activity->hours_type == 'standard') {
-                    $baseRate = $resource->selling_price;
+                // Gestione legacy per singola risorsa
+                $resource = Resource::findOrFail($activity->resource_id);
+                $project = Project::findOrFail($activity->project_id);
+                
+                // Ottieni la tariffa oraria della risorsa considerando il tipo di ore
+                $hourlyRate = null;
+                $projectResource = $project->resources()
+                    ->where('resources.id', $resource->id)
+                    ->wherePivot('hours_type', $activity->hours_type)
+                    ->first();
+                
+                if ($projectResource) {
+                    $hourlyRate = $projectResource->pivot->adjusted_rate;
                 } else {
-                    $baseRate = $resource->extra_selling_price ?: $resource->selling_price * 1.2;
+                    // Se la risorsa non è collegata al progetto con questo tipo di ore, usa la tariffa di base
+                    if ($activity->hours_type == 'standard') {
+                        $baseRate = $resource->selling_price;
+                    } else {
+                        $baseRate = $resource->extra_selling_price ?: $resource->selling_price * 1.2;
+                    }
+                    $hourlyRate = $project->calculateAdjustedRate($baseRate);
                 }
-                $hourlyRate = $project->calculateAdjustedRate($baseRate);
+                
+                $activity->actual_cost = ($activity->actual_minutes / 60) * $hourlyRate;
             }
-            
-            $activity->actual_cost = ($activity->actual_minutes / 60) * $hourlyRate;
         }
         
         $activity->save();

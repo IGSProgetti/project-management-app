@@ -14,6 +14,7 @@ class Activity extends Model
         'project_id',
         'area_id',
         'resource_id',
+        'has_multiple_resources',
         'estimated_minutes',
         'actual_minutes',
         'hours_type',
@@ -25,6 +26,7 @@ class Activity extends Model
 
     protected $casts = [
         'due_date' => 'date',
+        'has_multiple_resources' => 'boolean',
     ];
 
     /**
@@ -44,11 +46,21 @@ class Activity extends Model
     }
 
     /**
-     * Get the resource that owns the activity.
+     * Get the main resource associated with the activity (legacy support).
      */
     public function resource()
     {
         return $this->belongsTo(Resource::class);
+    }
+
+    /**
+     * Get all resources associated with this activity.
+     */
+    public function resources()
+    {
+        return $this->belongsToMany(Resource::class)
+            ->withPivot('estimated_minutes', 'actual_minutes', 'hours_type', 'estimated_cost', 'actual_cost')
+            ->withTimestamps();
     }
 
     /**
@@ -110,22 +122,49 @@ class Activity extends Model
     }
 
     /**
-     * Update actual cost based on actual minutes and resource rate.
+     * Update actual cost based on actual minutes and resource rates.
      */
     public function updateActualCost()
     {
-        if (!$this->resource) {
-            return;
-        }
-
-        // Determina la tariffa oraria in base al tipo di ore
-        if ($this->hours_type === 'standard') {
-            $hourlyRate = $this->resource->selling_price;
+        if ($this->has_multiple_resources) {
+            // Se l'attività ha risorse multiple, somma i costi di tutte le risorse
+            $totalActualCost = 0;
+            
+            foreach ($this->resources as $resource) {
+                $pivotData = $resource->pivot;
+                // Determina la tariffa oraria in base al tipo di ore
+                if ($pivotData->hours_type === 'standard') {
+                    $hourlyRate = $resource->selling_price;
+                } else {
+                    $hourlyRate = $resource->extra_selling_price ?? ($resource->selling_price * 1.2);
+                }
+                
+                $resourceActualCost = ($pivotData->actual_minutes / 60) * $hourlyRate;
+                $totalActualCost += $resourceActualCost;
+                
+                // Aggiorna anche il costo nella tabella pivot
+                $this->resources()->updateExistingPivot($resource->id, [
+                    'actual_cost' => $resourceActualCost
+                ]);
+            }
+            
+            $this->actual_cost = $totalActualCost;
         } else {
-            $hourlyRate = $this->resource->extra_selling_price ?? ($this->resource->selling_price * 1.2);
+            // Gestione legacy per singola risorsa
+            if (!$this->resource) {
+                return;
+            }
+
+            // Determina la tariffa oraria in base al tipo di ore
+            if ($this->hours_type === 'standard') {
+                $hourlyRate = $this->resource->selling_price;
+            } else {
+                $hourlyRate = $this->resource->extra_selling_price ?? ($this->resource->selling_price * 1.2);
+            }
+            
+            $this->actual_cost = ($this->actual_minutes / 60) * $hourlyRate;
         }
         
-        $this->actual_cost = ($this->actual_minutes / 60) * $hourlyRate;
         $this->save();
     }
 
@@ -183,6 +222,11 @@ class Activity extends Model
         // Aggiorna i minuti effettivi
         $this->actual_minutes = round($totalActualMinutes);
         
+        // Se l'attività ha risorse multiple, distribuisci i minuti effettivi proporzionalmente
+        if ($this->has_multiple_resources && $this->resources->count() > 0) {
+            $this->distributeActualMinutesToResources($totalActualMinutes);
+        }
+        
         // Aggiorna il costo effettivo
         $this->updateActualCost();
         
@@ -190,6 +234,35 @@ class Activity extends Model
         
         // Aggiorna anche l'area associata
         $this->updateParentArea();
+    }
+
+    /**
+     * Distribuisci i minuti effettivi tra le risorse proporzionalmente ai minuti stimati.
+     */
+    protected function distributeActualMinutesToResources($totalActualMinutes)
+    {
+        $totalEstimatedMinutes = $this->resources->sum('pivot.estimated_minutes');
+        
+        if ($totalEstimatedMinutes <= 0) {
+            // Se non ci sono minuti stimati, distribuisci equamente
+            $equalMinutes = $totalActualMinutes / max(1, $this->resources->count());
+            
+            foreach ($this->resources as $resource) {
+                $this->resources()->updateExistingPivot($resource->id, [
+                    'actual_minutes' => round($equalMinutes)
+                ]);
+            }
+        } else {
+            // Distribuisci proporzionalmente ai minuti stimati
+            foreach ($this->resources as $resource) {
+                $proportion = $resource->pivot->estimated_minutes / $totalEstimatedMinutes;
+                $resourceActualMinutes = round($totalActualMinutes * $proportion);
+                
+                $this->resources()->updateExistingPivot($resource->id, [
+                    'actual_minutes' => $resourceActualMinutes
+                ]);
+            }
+        }
     }
     
     /**
@@ -221,5 +294,29 @@ class Activity extends Model
     {
         $tasksActualMinutes = $this->tasks()->sum('actual_minutes');
         return max(0, $this->actual_minutes - $tasksActualMinutes);
+    }
+    
+    /**
+     * Migra i dati dalla relazione one-to-many alla many-to-many per supportare risorse multiple.
+     */
+    public function migrateToMultipleResources()
+    {
+        // Solo se l'attività ha una risorsa principale e non ha ancora risorse multiple
+        if ($this->resource_id && !$this->has_multiple_resources) {
+            $resource = $this->resource;
+            
+            // Aggiungi la risorsa principale alla relazione many-to-many
+            $this->resources()->attach($resource->id, [
+                'estimated_minutes' => $this->estimated_minutes,
+                'actual_minutes' => $this->actual_minutes,
+                'hours_type' => $this->hours_type,
+                'estimated_cost' => $this->estimated_cost,
+                'actual_cost' => $this->actual_cost
+            ]);
+            
+            // Aggiorna il flag
+            $this->has_multiple_resources = true;
+            $this->save();
+        }
     }
 }
