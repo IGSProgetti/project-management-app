@@ -2,6 +2,43 @@
 
 @section('title', 'Gestione Attività')
 
+@push('styles')
+<style>
+    .resource-avatars {
+        display: flex;
+        flex-wrap: nowrap;
+    }
+    
+    .resource-avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background-color: #007bff;
+        color: white;
+        font-weight: bold;
+        margin-right: -8px;
+        border: 2px solid #fff;
+        font-size: 12px;
+    }
+    
+    .resource-avatar:nth-child(2) {
+        background-color: #28a745;
+    }
+    
+    .resource-avatar:nth-child(3) {
+        background-color: #dc3545;
+    }
+    
+    .resource-more {
+        background-color: #6c757d;
+        cursor: pointer;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <div class="row mb-4">
@@ -78,7 +115,7 @@
                                 <th>Nome</th>
                                 <th>Progetto</th>
                                 <th>Area</th>
-                                <th>Risorsa</th>
+                                <th>Risorse</th>
                                 <th>Stato</th>
                                 <th>Minuti Stimati</th>
                                 <th>Minuti Effettivi</th>
@@ -98,7 +135,39 @@
                                     <td>{{ $activity->name }}</td>
                                     <td>{{ $activity->project->name }}</td>
                                     <td>{{ $activity->area ? $activity->area->name : '-' }}</td>
-                                    <td>{{ $activity->resource->name }}</td>
+                                    <td>
+                                        @if($activity->has_multiple_resources && $activity->resources->count() > 0)
+                                            <div class="resource-avatars">
+                                                @foreach($activity->resources as $index => $resource)
+                                                    @if($index < 3)
+                                                        <span class="resource-avatar" 
+                                                              data-bs-toggle="tooltip" 
+                                                              title="{{ $resource->name }} ({{ $resource->role }})">
+                                                            {{ substr($resource->name, 0, 1) }}
+                                                        </span>
+                                                    @endif
+                                                @endforeach
+                                                
+                                                @if($activity->resources->count() > 3)
+                                                    <span class="resource-avatar resource-more" 
+                                                          data-bs-toggle="popover" 
+                                                          data-bs-placement="top" 
+                                                          data-bs-html="true"
+                                                          data-bs-content="
+                                                              @foreach($activity->resources as $index => $resource)
+                                                                  @if($index >= 3)
+                                                                      <div>{{ $resource->name }} ({{ $resource->role }})</div>
+                                                                  @endif
+                                                              @endforeach
+                                                          ">
+                                                        +{{ $activity->resources->count() - 3 }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        @else
+                                            {{ $activity->resource ? $activity->resource->name : 'N/D' }}
+                                        @endif
+                                    </td>
                                     <td>
                                         @if($activity->status == 'pending')
                                             <span class="badge bg-warning">In attesa</span>
@@ -153,6 +222,21 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Inizializza i tooltip
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Inizializza i popover
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl, {
+                trigger: 'click hover',
+                container: 'body'
+            });
+        });
+        
         // Filtri
         const filterProject = document.getElementById('filterProject');
         const filterResource = document.getElementById('filterResource');
