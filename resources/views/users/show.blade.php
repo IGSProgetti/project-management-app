@@ -6,76 +6,101 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-md-6">
-            <h1>{{ $user->name }}</h1>
+            <h1>Dettagli Utente: {{ $user->name }}</h1>
         </div>
         <div class="col-md-6 text-end">
             <a href="{{ route('users.edit', $user->id) }}" class="btn btn-warning">
                 <i class="fas fa-edit"></i> Modifica
             </a>
             <a href="{{ route('users.index') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Indietro
+                <i class="fas fa-arrow-left"></i> Torna all'elenco
             </a>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-8">
             <div class="card mb-4">
                 <div class="card-header">
                     <h5>Informazioni Utente</h5>
                 </div>
                 <div class="card-body">
-                    <p><strong>Nome:</strong> {{ $user->name }}</p>
-                    <p><strong>Email:</strong> {{ $user->email }}</p>
-                    <p>
-                        <strong>Ruolo:</strong>
-                        @if($user->isAdmin())
-                            <span class="badge bg-danger">Amministratore</span>
-                        @else
-                            <span class="badge bg-info">{{ $user->getRole() }}</span>
-                        @endif
-                    </p>
-                    <p><strong>Data Creazione:</strong> {{ $user->created_at->format('d/m/Y H:i') }}</p>
-                    <p><strong>Ultimo Aggiornamento:</strong> {{ $user->updated_at->format('d/m/Y H:i') }}</p>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th style="width: 200px;">Nome</th>
+                            <td>{{ $user->name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email</th>
+                            <td>{{ $user->email }}</td>
+                        </tr>
+                        <tr>
+                            <th>Ruolo</th>
+                            <td>
+                                @if($user->is_admin)
+                                    <span class="badge bg-danger">Amministratore</span>
+                                @else
+                                    <span class="badge bg-info">Utente Risorsa</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Registrato il</th>
+                            <td>{{ $user->created_at->format('d/m/Y H:i') }}</td>
+                        </tr>
+                        <tr>
+                            <th>Ultimo aggiornamento</th>
+                            <td>{{ $user->updated_at->format('d/m/Y H:i') }}</td>
+                        </tr>
+                    </table>
                 </div>
             </div>
         </div>
         
-        <div class="col-md-6">
-            <div class="card mb-4">
+        <div class="col-md-4">
+            <div class="card">
                 <div class="card-header">
                     <h5>Risorsa Associata</h5>
                 </div>
                 <div class="card-body">
                     @if($user->resource)
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5>{{ $user->resource->name }}</h5>
-                            <a href="{{ route('resources.show', $user->resource->id) }}" class="btn btn-sm btn-info">
-                                <i class="fas fa-eye"></i> Visualizza Risorsa
+                        <div class="text-center mb-3">
+                            <div class="avatar-circle">
+                                <span class="avatar-text">{{ substr($user->resource->name, 0, 2) }}</span>
+                            </div>
+                        </div>
+                        
+                        <h5 class="text-center mb-3">{{ $user->resource->name }}</h5>
+                        
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Ruolo</th>
+                                <td>{{ $user->resource->role }}</td>
+                            </tr>
+                            <tr>
+                                <th>Stato</th>
+                                <td>
+                                    @if($user->resource->is_active)
+                                        <span class="badge bg-success">Attivo</span>
+                                    @else
+                                        <span class="badge bg-warning">Inattivo</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        <div class="text-center mt-3">
+                            <a href="{{ route('resources.show', $user->resource->id) }}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-eye"></i> Vedi Dettagli Risorsa
                             </a>
                         </div>
-                        <p><strong>Ruolo:</strong> {{ $user->resource->role }}</p>
-                        <p><strong>Email:</strong> {{ $user->resource->email }}</p>
-                        <p><strong>Telefono:</strong> {{ $user->resource->phone }}</p>
-                        <p>
-                            <strong>Stato:</strong>
-                            <span class="badge {{ $user->resource->is_active ? 'bg-success' : 'bg-danger' }}">
-                                {{ $user->resource->is_active ? 'Attivo' : 'Inattivo' }}
-                            </span>
-                        </p>
                     @else
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i> Nessuna risorsa associata a questo utente.
+                        <div class="text-center">
+                            <div class="avatar-circle bg-secondary">
+                                <span class="avatar-text">NA</span>
+                            </div>
+                            <p class="mt-3 text-muted">Nessuna risorsa associata</p>
                         </div>
-                        
-                        <p>
-                            Associando una risorsa, l'utente potrà operare come quella risorsa nel sistema,
-                            visualizzando i progetti e le attività assegnate alla risorsa.
-                        </p>
-                        
-                        <a href="{{ route('users.edit', $user->id) }}" class="btn btn-primary">
-                            <i class="fas fa-link"></i> Associa una Risorsa
-                        </a>
                     @endif
                 </div>
             </div>
@@ -83,3 +108,29 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    .avatar-circle {
+        width: 100px;
+        height: 100px;
+        background-color: #0d6efd;
+        text-align: center;
+        border-radius: 50%;
+        -webkit-border-radius: 50%;
+        -moz-border-radius: 50%;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .avatar-text {
+        font-size: 40px;
+        color: #fff;
+        line-height: 1;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+</style>
+@endpush

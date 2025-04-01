@@ -6,7 +6,7 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-md-12 d-flex justify-content-between align-items-center">
-            <h1>Dettaglio Attività: {{ $activity->name }}</h1>
+            <h1>{{ $activity->name }}</h1>
             <div>
                 <a href="{{ route('activities.edit', $activity->id) }}" class="btn btn-primary">
                     <i class="fas fa-edit"></i> Modifica
@@ -19,6 +19,96 @@
     </div>
     
     <!-- Aggiornamento sezione risorse per la vista show.blade.php -->
+    <!-- SEZIONE TASK ASSOCIATI - Spostata in cima alla pagina -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5>Task Associati</h5>
+            <a href="{{ route('tasks.create', ['activity_id' => $activity->id]) }}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus"></i> Nuovo Task
+            </a>
+        </div>
+        <div class="card-body">
+            @if($activity->tasks && $activity->tasks->count() > 0)
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Risorsa</th>
+                                <th>Stato</th>
+                                <th>Min. Stimati</th>
+                                <th>Min. Effettivi</th>
+                                <th>Progresso</th>
+                                <th>Scadenza</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($activity->tasks as $task)
+                                <tr>
+                                    <td>{{ $task->name }}</td>
+                                    <td>
+                                        @if($task->resource)
+                                            <span class="badge bg-info" data-bs-toggle="tooltip" title="{{ $task->resource->role ?? '' }}">
+                                                {{ $task->resource->name }}
+                                            </span>
+                                        @else
+                                            <span class="badge bg-secondary">Non assegnato</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($task->status == 'pending')
+                                            <span class="badge bg-warning">In attesa</span>
+                                        @elseif($task->status == 'in_progress')
+                                            <span class="badge bg-primary">In corso</span>
+                                        @elseif($task->status == 'completed')
+                                            <span class="badge bg-success">Completato</span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $task->estimated_minutes }}</td>
+                                    <td>{{ $task->actual_minutes }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 5px;">
+                                            <div class="progress-bar {{ $task->is_over_estimated ? 'bg-danger' : '' }}" role="progressbar" 
+                                                 style="width: {{ $task->progress_percentage }}%" 
+                                                 aria-valuenow="{{ $task->progress_percentage }}" 
+                                                 aria-valuemin="0" 
+                                                 aria-valuemax="100"></div>
+                                        </div>
+                                        <small>{{ $task->progress_percentage }}%</small>
+                                    </td>
+                                    <td>{{ $task->due_date ? $task->due_date->format('d/m/Y') : '-' }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ route('tasks.show', $task->id) }}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('tasks.edit', $task->id) }}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Sei sicuro di voler eliminare questo task?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Nessun task associato a questa attività. 
+                    <a href="{{ route('tasks.create', ['activity_id' => $activity->id]) }}">Crea il primo task</a>.
+                </div>
+            @endif
+        </div>
+    </div>
+
     <div class="card mb-4">
         <div class="card-header">
             <h5>Informazioni Attività</h5>
@@ -243,6 +333,8 @@
     </div>
     @endif
 
+
+
     <!-- Modal di conferma eliminazione -->
     <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -267,3 +359,15 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inizializza i tooltip per i badge delle risorse
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+@endpush

@@ -200,31 +200,38 @@ class Activity extends Model
     public function updateActualMinutesFromTasks()
     {
         $totalTasks = $this->tasks()->count();
-        $completedTasks = $this->tasks()->where('status', 'completed')->get();
         
         if ($totalTasks === 0) {
             return;
         }
-
-        // Se i task hanno minuti effettivi specificati, usa quelli
+        
+        // Minuti totali per l'intera attività
         $totalActualMinutes = 0;
-        foreach ($completedTasks as $task) {
-            if ($task->actual_minutes > 0) {
-                $totalActualMinutes += $task->actual_minutes;
-            } else {
-                // Altrimenti usa una proporzione dei minuti stimati dell'attività
-                $totalActualMinutes += isset($task->estimated_minutes) && $task->estimated_minutes > 0 
-                    ? $task->estimated_minutes 
-                    : $this->estimated_minutes / $totalTasks;
+        
+        // Array per tenere traccia dei minuti effettivi per risorsa
+        $resourceMinutes = [];
+        
+        // Calcola i minuti effettivi per ogni risorsa in base ai task
+        $tasks = $this->tasks()->get();
+        foreach ($tasks as $task) {
+            $taskMinutes = $task->actual_minutes > 0 ? $task->actual_minutes : 0;
+            $totalActualMinutes += $taskMinutes;
+            
+            // Se il task ha una risorsa assegnata, aggiungi i minuti a quella risorsa
+            if ($task->resource_id) {
+                if (!isset($resourceMinutes[$task->resource_id])) {
+                    $resourceMinutes[$task->resource_id] = 0;
+                }
+                $resourceMinutes[$task->resource_id] += $taskMinutes;
             }
         }
         
-        // Aggiorna i minuti effettivi
-        $this->actual_minutes = round($totalActualMinutes);
+        // Aggiorna i minuti effettivi dell'attività
+        $this->actual_minutes = $totalActualMinutes;
         
-        // Se l'attività ha risorse multiple, distribuisci i minuti effettivi proporzionalmente
+        // Se l'attività ha risorse multiple, distribuisci i minuti in base ai task
         if ($this->has_multiple_resources && $this->resources->count() > 0) {
-            $this->distributeActualMinutesToResources($totalActualMinutes);
+            $this->distributeActualMinutesToResourcesFromTasks($resourceMinutes);
         }
         
         // Aggiorna il costo effettivo
@@ -237,33 +244,48 @@ class Activity extends Model
     }
 
     /**
-     * Distribuisci i minuti effettivi tra le risorse proporzionalmente ai minuti stimati.
+     * Distribuisci i minuti effettivi alle risorse in base ai task completati.
      */
-    protected function distributeActualMinutesToResources($totalActualMinutes)
+    protected function distributeActualMinutesToResourcesFromTasks($resourceMinutes)
     {
-        $totalEstimatedMinutes = $this->resources->sum('pivot.estimated_minutes');
-        
-        if ($totalEstimatedMinutes <= 0) {
-            // Se non ci sono minuti stimati, distribuisci equamente
-            $equalMinutes = $totalActualMinutes / max(1, $this->resources->count());
+        foreach ($this->resources as $resource) {
+            $resourceId = $resource->id;
+            $actualMinutes = isset($resourceMinutes[$resourceId]) ? $resourceMinutes[$resourceId] : 0;
             
-            foreach ($this->resources as $resource) {
-                $this->resources()->updateExistingPivot($resource->id, [
-                    'actual_minutes' => round($equalMinutes)
-                ]);
-            }
-        } else {
-            // Distribuisci proporzionalmente ai minuti stimati
-            foreach ($this->resources as $resource) {
-                $proportion = $resource->pivot->estimated_minutes / $totalEstimatedMinutes;
-                $resourceActualMinutes = round($totalActualMinutes * $proportion);
-                
-                $this->resources()->updateExistingPivot($resource->id, [
-                    'actual_minutes' => $resourceActualMinutes
-                ]);
-            }
+            $this->resources()->updateExistingPivot($resourceId, [
+                'actual_minutes' => $actualMinutes
+            ]);
         }
     }
+
+    /**
+ * Distribuisci i minuti effettivi tra le risorse proporzionalmente ai minuti stimati.
+ */
+protected function distributeActualMinutesToResources($totalActualMinutes)
+{
+    $totalEstimatedMinutes = $this->resources->sum('pivot.estimated_minutes');
+    
+    if ($totalEstimatedMinutes <= 0) {
+        // Se non ci sono minuti stimati, distribuisci equamente
+        $equalMinutes = $totalActualMinutes / max(1, $this->resources->count());
+        
+        foreach ($this->resources as $resource) {
+            $this->resources()->updateExistingPivot($resource->id, [
+                'actual_minutes' => round($equalMinutes)
+            ]);
+        }
+    } else {
+        // Distribuisci proporzionalmente ai minuti stimati
+        foreach ($this->resources as $resource) {
+            $proportion = $resource->pivot->estimated_minutes / $totalEstimatedMinutes;
+            $resourceActualMinutes = round($totalActualMinutes * $proportion);
+            
+            $this->resources()->updateExistingPivot($resource->id, [
+                'actual_minutes' => $resourceActualMinutes
+            ]);
+        }
+    }
+}
     
     /**
      * Update parent area with actual minutes.

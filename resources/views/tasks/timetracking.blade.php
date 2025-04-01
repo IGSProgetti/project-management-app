@@ -467,6 +467,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log("Inizializzazione pagina...");
+    
     // Inizializza Select2 per tutte le dropdown multiple
     $('.select2-dropdown').select2({
         theme: 'bootstrap-5',
@@ -489,9 +491,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Popolamento dinamico delle attività in base ai progetti selezionati
     filterProjects.on('change', function() {
         const selectedProjectIds = $(this).val();
+        console.log("Progetti selezionati:", selectedProjectIds);
         
         // Reset del filtro attività se non ci sono progetti selezionati
         if (!selectedProjectIds || selectedProjectIds.length === 0) {
+            console.log("Nessun progetto selezionato, carico tutte le attività");
             loadAllActivities();
             return;
         }
@@ -502,30 +506,60 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Funzione per caricare tutte le attività
     function loadAllActivities() {
+        console.log("Caricamento di tutte le attività...");
+        // Mostra un indicatore di caricamento
+        filterActivities.empty().append(new Option('Caricamento attività...', ''));
+        filterActivities.prop('disabled', true);
+        
         fetch('/api/activities')
-            .then(response => response.json())
+            .then(response => {
+                console.log("Risposta ricevuta:", response.status);
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log("Dati attività ricevuti:", data);
                 if (data.success) {
                     updateActivitiesDropdown(data.activities);
+                } else {
+                    console.error("La risposta non contiene 'success: true'");
+                    updateActivitiesDropdown([]);
                 }
             })
             .catch(error => {
                 console.error('Errore nel caricamento delle attività:', error);
-                // Se la chiamata fallisce, svuota il dropdown tranne l'opzione default
                 updateActivitiesDropdown([]);
+            })
+            .finally(() => {
+                // Riabilita il dropdown
+                filterActivities.prop('disabled', false);
             });
     }
     
     // Funzione per caricare le attività dei progetti selezionati
     function loadActivitiesForProjects(projectIds) {
+        console.log("Caricamento attività per progetti:", projectIds);
         // Mantieni le attività selezionate correntemente
         const selectedActivityIds = filterActivities.val() || [];
         
+        // Mostra un indicatore di caricamento nel dropdown
+        filterActivities.empty().append(new Option('Caricamento attività...', ''));
+        filterActivities.prop('disabled', true);
+        
         // Processa ogni progetto separatamente e poi combina i risultati
-        const promises = projectIds.map(projectId => 
-            fetch(`/activities/by-project/${projectId}`)
-                .then(response => response.json())
+        const promises = projectIds.map(projectId =>
+            fetch(`/api/activities/by-project/${projectId}`)
+                .then(response => {
+                    console.log(`Risposta per il progetto ${projectId}:`, response.status);
+                    if (!response.ok) {
+                        throw new Error(`Errore HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.log(`Dati attività per il progetto ${projectId}:`, data);
                     if (data.success) {
                         return data.activities;
                     }
@@ -541,32 +575,64 @@ document.addEventListener('DOMContentLoaded', function() {
         Promise.all(promises)
             .then(activitiesArrays => {
                 // Unisci tutti gli array di attività
-                const allActivities = [].concat(...activitiesArrays);
+                const uniqueActivitiesMap = {};
+                activitiesArrays.flat().forEach(activity => {
+                    uniqueActivitiesMap[activity.id] = activity;
+                });
                 
-                // Elimina i duplicati (se un'attività appartiene a più progetti)
-                const uniqueActivities = allActivities.filter((activity, index, self) => 
-                    index === self.findIndex(a => a.id === activity.id)
-                );
+                const uniqueActivities = Object.values(uniqueActivitiesMap);
+                console.log("Attività uniche:", uniqueActivities.length);
                 
                 // Aggiorna il dropdown delle attività mantenendo le selezioni
                 updateActivitiesDropdown(uniqueActivities, selectedActivityIds);
+            })
+            .finally(() => {
+                // Riabilita il dropdown
+                filterActivities.prop('disabled', false);
             });
     }
     
     // Funzione per aggiornare il dropdown delle attività
     function updateActivitiesDropdown(activities, selectedIds = []) {
+        console.log("Aggiornamento dropdown attività con", activities ? activities.length : 0, "attività");
+        
         // Se non sono stati forniti selectedIds, prendi le attuali selezioni
         if (!selectedIds || selectedIds.length === 0) {
             selectedIds = filterActivities.val() || [];
         }
         
-        // Svuota il dropdown
-        filterActivities.empty();
+        // Svuota il dropdown e aggiungi l'opzione predefinita
+        filterActivities.empty().append(new Option('Tutte le attività', ''));
+        
+        // Controlla se abbiamo attività da aggiungere
+        if (!activities || activities.length === 0) {
+            console.log("Nessuna attività da aggiungere al dropdown");
+            filterActivities.trigger('change');
+            return;
+        }
+        
+        console.log("Aggiunta di", activities.length, "attività al dropdown");
+        
+        // Ordina le attività per nome per una migliore usabilità
+        activities.sort((a, b) => a.name.localeCompare(b.name));
         
         // Riempilo con le nuove attività
         activities.forEach(activity => {
-            const isSelected = selectedIds.includes(activity.id.toString());
-            filterActivities.append(new Option(activity.name, activity.id, false, isSelected));
+            // Assicurati che activity.id sia una stringa quando fai il confronto
+            const activityId = String(activity.id);
+            const isSelected = selectedIds.includes(activityId);
+            
+            console.log(`Aggiunta attività: ${activity.name} (id: ${activityId}), selezionata: ${isSelected}`);
+            
+            // Crea una nuova opzione
+            const option = new Option(
+                activity.name, 
+                activityId, 
+                false,  // non selezionata per default
+                isSelected  // selezionata se era nella lista precedente
+            );
+            
+            filterActivities.append(option);
         });
         
         // Aggiorna Select2
@@ -819,6 +885,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Inizializza i grafici
     updateCharts();
+    
+    // Carica le attività all'avvio della pagina
+    console.log("Caricamento iniziale delle attività...");
+    loadAllActivities();
 });
 </script>
 @endpush

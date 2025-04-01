@@ -8,6 +8,7 @@ use App\Models\Area;
 use App\Models\Resource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
 
 class ActivityController extends Controller
 {
@@ -660,6 +661,65 @@ class ActivityController extends Controller
             'area_estimated_minutes' => $area->estimated_minutes,
             'area_activities_minutes' => $area->activities_estimated_minutes,
             'current_activity_minutes' => $currentActivityMinutes
+        ]);
+    }
+
+   /**
+ * Get all activities for AJAX requests.
+ */
+public function getAllActivities()
+{
+    try {
+        // Semplifica il metodo per isolare il problema
+        $activities = Activity::with('project')->get();
+        
+        return response()->json([
+            'success' => true,
+            'activities' => $activities
+        ]);
+    } catch (\Exception $e) {
+        // Log dell'errore
+        \Log::error('Errore in getAllActivities: ' . $e->getMessage());
+        
+        // Restituisci una risposta di errore
+        return response()->json([
+            'success' => false,
+            'message' => 'Si è verificato un errore: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+    /**
+     * Get activities by project specifically for API requests.
+     */
+    public function byProjectForApi(string $projectId)
+    {
+        $user = Auth::user();
+        
+        if ($user->is_admin) {
+            $activities = Activity::with(['resource', 'area'])
+                ->where('project_id', $projectId)
+                ->get();
+        } else {
+            $resourceId = $user->resource_id;
+            
+            $activities = Activity::where('project_id', $projectId)
+                ->where(function ($query) use ($resourceId) {
+                    $query->where('resource_id', $resourceId)
+                          ->orWhere(function ($q) use ($resourceId) {
+                              $q->where('has_multiple_resources', true)
+                                ->whereHas('resources', function ($innerQ) use ($resourceId) {
+                                    $innerQ->where('resources.id', $resourceId);
+                                });
+                          });
+                })
+                ->with(['resource', 'area'])
+                ->get();
+        }
+        
+        return response()->json([
+            'success' => true,
+            'activities' => $activities
         ]);
     }
 }

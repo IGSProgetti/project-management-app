@@ -13,6 +13,7 @@ class Task extends Model
         'name',
         'description',
         'activity_id',
+        'resource_id', // Aggiunto resource_id
         'status',
         'due_date',
         'order',
@@ -30,6 +31,14 @@ class Task extends Model
     public function activity()
     {
         return $this->belongsTo(Activity::class);
+    }
+
+    /**
+     * Get the resource assigned to the task.
+     */
+    public function resource()
+    {
+        return $this->belongsTo(Resource::class);
     }
 
     /**

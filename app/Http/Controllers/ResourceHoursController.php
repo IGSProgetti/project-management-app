@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\Client;
 use App\Services\HoursTreasureService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ResourceHoursController extends Controller
 {
@@ -53,88 +54,103 @@ class ResourceHoursController extends Controller
      * Filtra i dati in base ai parametri della richiesta.
      */
     public function filter(Request $request)
-    {
-        // Validazione dei filtri
-        $request->validate([
-            'project_ids' => 'nullable|array',
-            'project_ids.*' => 'exists:projects,id',
-            'client_ids' => 'nullable|array',
-            'client_ids.*' => 'exists:clients,id',
-            'resource_ids' => 'nullable|array',
-            'resource_ids.*' => 'exists:resources,id',
-        ]);
-        
-        // Costruisci la query base
-        $resourcesQuery = Resource::with(['projects', 'activities.project.client', 'activities.tasks'])
-            ->where('is_active', true);
-            
-        // Filtra per risorse specifiche se richiesto
-        if ($request->has('resource_ids') && !empty($request->resource_ids)) {
-            $resourcesQuery->whereIn('id', $request->resource_ids);
-        }
-        
-        // Esegui la query
-        $resources = $resourcesQuery->get();
-        
-        // Prepara i dati del tesoretto usando il servizio
-        $filters = [
-            'project_ids' => $request->input('project_ids', []),
-            'client_ids' => $request->input('client_ids', []),
-        ];
-        
-        $resourcesData = $this->treasureService->calculateTreasureData($resources, $filters);
-        
-        // Calcola le statistiche di efficienza
-        $efficiencyStats = $this->treasureService->calculateEfficiencyStats($resourcesData);
-        
-        return response()->json([
-            'success' => true,
-            'resourcesData' => $resourcesData,
-            'efficiencyStats' => $efficiencyStats
-        ]);
+{
+    // Validazione dei filtri
+    $request->validate([
+        'project_ids' => 'nullable|array',
+        'project_ids.*' => 'exists:projects,id',
+        'client_ids' => 'nullable|array',
+        'client_ids.*' => 'exists:clients,id',
+        'resource_ids' => 'nullable|array',
+        'resource_ids.*' => 'exists:resources,id',
+    ]);
+
+    // Query base per ottenere le risorse
+    $resourcesQuery = Resource::with([
+        'activities.project.client', 
+        'activities.tasks', 
+        'primaryActivities.project.client', 
+        'primaryActivities.tasks'
+    ])
+    ->where('is_active', true);
+
+    // Filtra per risorse specifiche
+    if ($request->has('resource_ids') && !empty($request->resource_ids)) {
+        $resourcesQuery->whereIn('id', $request->resource_ids);
     }
+
+    // Applica filtri aggiuntivi
+    $filters = [
+        'project_ids' => $request->input('project_ids', []),
+        'client_ids' => $request->input('client_ids', []),
+    ];
+
+    // Ottieni le risorse filtrate
+    $resources = $resourcesQuery->get();
+
+    // Calcola i dati del tesoretto
+    $resourcesData = $this->treasureService->calculateTreasureData($resources, $filters);
+
+    // Debug: Log dei dati
+    \Log::info('Dati risorse filtrate:', [
+        'count' => count($resourcesData),
+        'first_resource' => $resourcesData[0] ?? null
+    ]);
+
+    // Calcola le statistiche di efficienza
+    $efficiencyStats = $this->treasureService->calculateEfficiencyStats($resourcesData);
+
+    return response()->json([
+        'success' => true,
+        'resourcesData' => $resourcesData,
+        'efficiencyStats' => $efficiencyStats
+    ]);
+}
     
     /**
      * Ottiene i dettagli delle attività e task per una risorsa specifica.
+     * Correzione: previene duplicazioni e assicura calcoli corretti del tesoretto.
      */
     public function getResourceTaskDetails(Request $request, $resourceId)
-{
-    try {
-        // Validazione dei filtri
-        $request->validate([
-            'project_ids' => 'nullable|array',
-            'project_ids.*' => 'exists:projects,id',
-            'client_ids' => 'nullable|array',
-            'client_ids.*' => 'exists:clients,id',
-            'activity_id' => 'nullable|exists:activities,id',
-        ]);
-        
-        // Prepara i filtri
-        $filters = [
-            'project_ids' => $request->input('project_ids', []),
-            'client_ids' => $request->input('client_ids', []),
-            'activity_id' => $request->input('activity_id'),
-        ];
-        
-        // Ottieni i dettagli dei task dalla risorsa
-        $taskDetails = $this->treasureService->getTaskDetailsByResource($resourceId, $filters);
-        
-        return response()->json([
-            'success' => true,
-            'taskDetails' => $taskDetails
-        ]);
-    } catch (\Exception $e) {
-        // Log dell'errore
-        \Log::error('Errore durante il recupero dei task: ' . $e->getMessage());
-        \Log::error($e->getTraceAsString());
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'Si è verificato un errore durante il recupero dei task',
-            'error' => $e->getMessage(),
-        ], 500);
+    {
+        try {
+            // Validazione dei filtri
+            $request->validate([
+                'project_ids' => 'nullable|array',
+                'project_ids.*' => 'exists:projects,id',
+                'client_ids' => 'nullable|array',
+                'client_ids.*' => 'exists:clients,id',
+                'activity_id' => 'nullable|exists:activities,id',
+                'unique_tasks' => 'nullable|boolean',
+            ]);
+            
+            // Prepara i filtri
+            $filters = [
+                'project_ids' => $request->input('project_ids', []),
+                'client_ids' => $request->input('client_ids', []),
+                'activity_id' => $request->input('activity_id'),
+                'unique_tasks' => $request->input('unique_tasks', true), // Per default rimuoviamo i duplicati
+            ];
+            
+            // Ottieni i dettagli dei task dalla risorsa
+            $taskDetails = $this->treasureService->getTaskDetailsByResource($resourceId, $filters);
+            
+            return response()->json([
+                'success' => true,
+                'taskDetails' => $taskDetails
+            ]);
+        } catch (\Exception $e) {
+            // Log dell'errore
+            \Log::error('Errore durante il recupero dei task: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Si è verificato un errore durante il recupero dei task',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
-}
     
     /**
      * Esporta i dati delle ore in formato CSV.
@@ -300,6 +316,8 @@ class ResourceHoursController extends Controller
                     ]);
                     
                     foreach ($resources as $resource) {
+                        // Passa l'opzione per ottenere task unici
+                        $filters['unique_tasks'] = true;
                         $taskDetails = $treasureService->getTaskDetailsByResource($resource->id, $filters);
                         
                         foreach ($taskDetails as $task) {

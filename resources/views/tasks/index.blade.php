@@ -24,7 +24,7 @@
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="mb-3">
                         <label for="filterActivity">Attività</label>
                         <select id="filterActivity" class="form-select">
@@ -35,7 +35,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="mb-3">
                         <label for="filterStatus">Stato</label>
                         <select id="filterStatus" class="form-select">
@@ -46,7 +46,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="mb-3">
                         <label for="filterDueDate">Scadenza</label>
                         <select id="filterDueDate" class="form-select">
@@ -55,6 +55,17 @@
                             <option value="tomorrow">Domani</option>
                             <option value="week">Questa settimana</option>
                             <option value="overdue">Scaduti</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label for="filterResource">Risorsa</label>
+                        <select id="filterResource" class="form-select">
+                            <option value="">Tutte le risorse</option>
+                            @foreach($resources ?? [] as $resource)
+                                <option value="{{ $resource->id }}">{{ $resource->name }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>
@@ -69,6 +80,7 @@
                     <table class="table table-striped" id="tasksTable">
                         <thead>
                             <tr>
+                                <th>Risorsa</th> <!-- Nuova colonna per la risorsa -->
                                 <th>Nome</th>
                                 <th>Cliente</th>
                                 <th>Attività</th>
@@ -88,7 +100,17 @@
                                     data-activity="{{ $task->activity_id }}" 
                                     data-status="{{ $task->status }}"
                                     data-task-id="{{ $task->id }}"
+                                    data-resource="{{ $task->resource_id ?? '' }}"
                                 >
+                                    <td>
+                                        @if($task->resource)
+                                            <span class="badge bg-info" data-bs-toggle="tooltip" title="{{ $task->resource->role }}">
+                                                {{ $task->resource->name }}
+                                            </span>
+                                        @else
+                                            <span class="badge bg-secondary">Non assegnato</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $task->name }}</td>
                                     <td>{{ $task->activity->project->client->name ?? 'N/D' }}</td>
                                     <td>{{ $task->activity->name ?? 'N/D' }}</td>
@@ -187,289 +209,148 @@
 </div>
 @endsection
 
-@push('styles')
-<style>
-    .timer-display {
-        display: inline-block;
-        min-width: 60px;
-        font-family: monospace;
-    }
-    
-    .task-timer-group {
-        white-space: nowrap;
-    }
-    
-    .timer-active {
-        animation: pulse 2s infinite;
-    }
-    
-    @keyframes pulse {
-        0% {
-            opacity: 1;
-        }
-        50% {
-            opacity: 0.5;
-        }
-        100% {
-            opacity: 1;
-        }
-    }
-</style>
-@endpush
-
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Inizializza tooltip
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
         // Filtri
         const filterActivity = document.getElementById('filterActivity');
         const filterStatus = document.getElementById('filterStatus');
         const filterDueDate = document.getElementById('filterDueDate');
+        const filterResource = document.getElementById('filterResource');
         const table = document.getElementById('tasksTable');
         
-        if (filterActivity && filterStatus && filterDueDate && table) {
+        function applyFilters() {
+            const activityFilter = filterActivity.value;
+            const statusFilter = filterStatus.value;
+            const dueDateFilter = filterDueDate.value;
+            const resourceFilter = filterResource.value;
+            
             const rows = table.querySelectorAll('tbody tr');
             
-            function applyFilters() {
-                const activityFilter = filterActivity.value;
-                const statusFilter = filterStatus.value;
-                const dueDateFilter = filterDueDate.value;
+            rows.forEach(row => {
+                const activityMatch = !activityFilter || row.dataset.activity === activityFilter;
+                const statusMatch = !statusFilter || row.dataset.status === statusFilter;
+                const resourceMatch = !resourceFilter || row.dataset.resource === resourceFilter;
                 
-                rows.forEach(row => {
-                    const activityMatch = !activityFilter || row.dataset.activity === activityFilter;
-                    const statusMatch = !statusFilter || row.dataset.status === statusFilter;
+                // Logica per il filtro delle date di scadenza
+                let dueDateMatch = true;
+                if (dueDateFilter) {
+                    const dueDate = new Date(row.cells[9].textContent.trim()); // Assumendo che la colonna della scadenza sia la 9
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
                     
-                    // Gestione filtro data di scadenza
-                    let dueDateMatch = true;
-                    if (dueDateFilter) {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        
-                        const tomorrow = new Date(today);
-                        tomorrow.setDate(tomorrow.getDate() + 1);
-                        
-                        const nextWeek = new Date(today);
-                        nextWeek.setDate(nextWeek.getDate() + 7);
-                        
-                        const dueDateCell = row.cells[8].textContent.trim();
-                        
-                        if (dueDateCell !== '-') {
-                            const parts = dueDateCell.split('/');
-                            const dueDate = new Date(parts[2], parts[1] - 1, parts[0]);
-                            dueDate.setHours(0, 0, 0, 0);
-                            
-                            if (dueDateFilter === 'today') {
-                                dueDateMatch = dueDate.getTime() === today.getTime();
-                            } else if (dueDateFilter === 'tomorrow') {
-                                dueDateMatch = dueDate.getTime() === tomorrow.getTime();
-                            } else if (dueDateFilter === 'week') {
-                                dueDateMatch = dueDate >= today && dueDate <= nextWeek;
-                            } else if (dueDateFilter === 'overdue') {
-                                dueDateMatch = dueDate < today;
-                            }
-                        } else {
-                            dueDateMatch = false;
-                        }
-                    }
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
                     
-                    if (activityMatch && statusMatch && dueDateMatch) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
+                    const weekEnd = new Date(today);
+                    weekEnd.setDate(weekEnd.getDate() + (7 - weekEnd.getDay()));
+                    
+                    if (dueDateFilter === 'today') {
+                        dueDateMatch = dueDate.toDateString() === today.toDateString();
+                    } else if (dueDateFilter === 'tomorrow') {
+                        dueDateMatch = dueDate.toDateString() === tomorrow.toDateString();
+                    } else if (dueDateFilter === 'week') {
+                        dueDateMatch = dueDate >= today && dueDate <= weekEnd;
+                    } else if (dueDateFilter === 'overdue') {
+                        dueDateMatch = dueDate < today && row.dataset.status !== 'completed';
                     }
-                });
-            }
-            
-            filterActivity.addEventListener('change', applyFilters);
-            filterStatus.addEventListener('change', applyFilters);
-            filterDueDate.addEventListener('change', applyFilters);
-        }
-
-        // Gestione dei timer
-        const timers = {};
-        const saveTimerModal = new bootstrap.Modal(document.getElementById('saveTimerModal'));
-
-        // Funzione per avviare un cronometro
-        function startTimer(taskId) {
-            if (timers[taskId]) {
-                return; // Timer già in esecuzione
-            }
-
-            const timerGroup = document.querySelector(`.task-timer-group[data-task-id="${taskId}"]`);
-            const startBtn = timerGroup.querySelector('.start-timer-btn');
-            const stopBtn = timerGroup.querySelector('.stop-timer-btn');
-            const timerDisplay = timerGroup.querySelector('.timer-display');
-
-            // Disabilita il pulsante di avvio e abilita quello di arresto
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
-
-            // Stato iniziale del timer
-            timers[taskId] = {
-                startTime: Date.now(),
-                elapsedTime: 0,
-                intervalId: null,
-                display: timerDisplay
-            };
-
-            // Aggiunge una classe per indicare che il timer è attivo
-            timerDisplay.classList.add('timer-active');
-
-            // Imposta un intervallo per aggiornare il timer ogni secondo
-            timers[taskId].intervalId = setInterval(() => {
-                updateTimerDisplay(taskId);
-            }, 1000);
-
-            // Salva lo stato del timer in localStorage
-            saveTimerState(taskId);
-        }
-
-        // Funzione per fermare un cronometro
-        function stopTimer(taskId) {
-            if (!timers[taskId]) {
-                return; // Nessun timer in esecuzione
-            }
-
-            const timerGroup = document.querySelector(`.task-timer-group[data-task-id="${taskId}"]`);
-            const startBtn = timerGroup.querySelector('.start-timer-btn');
-            const stopBtn = timerGroup.querySelector('.stop-timer-btn');
-            const timerDisplay = timerGroup.querySelector('.timer-display');
-
-            // Ferma l'intervallo
-            clearInterval(timers[taskId].intervalId);
-
-            // Calcola il tempo totale trascorso
-            const currentTime = Date.now();
-            const elapsedTime = currentTime - timers[taskId].startTime + timers[taskId].elapsedTime;
-            timers[taskId].elapsedTime = elapsedTime;
-
-            // Rimuove la classe che indica che il timer è attivo
-            timerDisplay.classList.remove('timer-active');
-
-            // Riabilita il pulsante di avvio e disabilita quello di arresto
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
-
-            // Salva lo stato del timer in localStorage
-            saveTimerState(taskId);
-
-            // Chiedi all'utente se vuole salvare il tempo
-            showSaveTimerModal(taskId, elapsedTime);
-        }
-
-        // Funzione per aggiornare il display del timer
-        function updateTimerDisplay(taskId) {
-            if (!timers[taskId]) {
-                return;
-            }
-
-            const currentTime = Date.now();
-            const elapsedTime = currentTime - timers[taskId].startTime + timers[taskId].elapsedTime;
-            
-            // Calcola ore, minuti e secondi
-            const totalSeconds = Math.floor(elapsedTime / 1000);
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-            
-            // Formatta il tempo
-            const timeString = [
-                hours.toString().padStart(2, '0'),
-                minutes.toString().padStart(2, '0'),
-                seconds.toString().padStart(2, '0')
-            ].join(':');
-            
-            // Aggiorna il display
-            timers[taskId].display.textContent = timeString;
-        }
-
-        // Funzione per salvare lo stato dei timer in localStorage
-        function saveTimerState(taskId) {
-            if (!timers[taskId]) {
-                return;
-            }
-
-            const timerState = {
-                taskId: taskId,
-                startTime: timers[taskId].startTime,
-                elapsedTime: timers[taskId].elapsedTime,
-                isRunning: timers[taskId].intervalId !== null,
-                lastUpdated: Date.now()
-            };
-
-            localStorage.setItem(`taskTimer_${taskId}`, JSON.stringify(timerState));
-        }
-
-        // Funzione per caricare lo stato dei timer da localStorage
-        function loadTimerStates() {
-            document.querySelectorAll('.task-timer-group').forEach(timerGroup => {
-                const taskId = timerGroup.dataset.taskId;
-                const savedState = localStorage.getItem(`taskTimer_${taskId}`);
+                }
                 
-                if (savedState) {
-                    try {
-                        const state = JSON.parse(savedState);
-                        const timerDisplay = timerGroup.querySelector('.timer-display');
-                        const startBtn = timerGroup.querySelector('.start-timer-btn');
-                        const stopBtn = timerGroup.querySelector('.stop-timer-btn');
-                        
-                        // Crea un oggetto timer
-                        timers[taskId] = {
-                            startTime: state.startTime,
-                            elapsedTime: state.elapsedTime,
-                            intervalId: null,
-                            display: timerDisplay
-                        };
-
-                        // Se il timer era in esecuzione
-                        if (state.isRunning) {
-                            // Calcola il tempo trascorso mentre la pagina era chiusa
-                            const timePassed = Date.now() - state.lastUpdated;
-                            timers[taskId].elapsedTime += timePassed;
-                            
-                            // Riavvia il timer
-                            timers[taskId].startTime = Date.now();
-                            timers[taskId].intervalId = setInterval(() => {
-                                updateTimerDisplay(taskId);
-                            }, 1000);
-                            
-                            // Aggiorna l'interfaccia
-                            startBtn.disabled = true;
-                            stopBtn.disabled = false;
-                            timerDisplay.classList.add('timer-active');
-                        }
-                        
-                        // Aggiorna il display
-                        updateTimerDisplay(taskId);
-                    } catch (e) {
-                        console.error('Errore nel caricamento dello stato del timer', e);
-                    }
+                if (activityMatch && statusMatch && dueDateMatch && resourceMatch) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
                 }
             });
         }
-
-        // Funzione per mostrare il modal di conferma per salvare il tempo
-        function showSaveTimerModal(taskId, elapsedTime) {
-            const taskRow = document.querySelector(`tr[data-task-id="${taskId}"]`);
-            const taskName = taskRow.cells[0].textContent;
-            const totalMinutes = Math.floor(elapsedTime / 60000);
+        
+        if (filterActivity) filterActivity.addEventListener('change', applyFilters);
+        if (filterStatus) filterStatus.addEventListener('change', applyFilters);
+        if (filterDueDate) filterDueDate.addEventListener('change', applyFilters);
+        if (filterResource) filterResource.addEventListener('change', applyFilters);
+        
+        // Timer management
+        let timers = {};
+        const saveTimerModal = new bootstrap.Modal(document.getElementById('saveTimerModal'));
+        
+        document.querySelectorAll('.start-timer-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const taskId = this.getAttribute('data-task-id');
+                const timerGroup = document.querySelector(`.task-timer-group[data-task-id="${taskId}"]`);
+                const timerDisplay = timerGroup.querySelector('.timer-display');
+                const stopButton = timerGroup.querySelector('.stop-timer-btn');
+                
+                // Disabilita tutti gli altri pulsanti di avvio
+                document.querySelectorAll('.start-timer-btn').forEach(btn => {
+                    btn.disabled = true;
+                });
+                
+                // Abilita il pulsante di stop per questo task
+                stopButton.disabled = false;
+                
+                // Inizializza il timer
+                let seconds = 0;
+                timers[taskId] = setInterval(() => {
+                    seconds++;
+                    const hours = Math.floor(seconds / 3600);
+                    const minutes = Math.floor((seconds % 3600) / 60);
+                    const secs = seconds % 60;
+                    
+                    timerDisplay.textContent = 
+                        (hours < 10 ? '0' + hours : hours) + ':' +
+                        (minutes < 10 ? '0' + minutes : minutes) + ':' +
+                        (secs < 10 ? '0' + secs : secs);
+                }, 1000);
+            });
+        });
+        
+        document.querySelectorAll('.stop-timer-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const taskId = this.getAttribute('data-task-id');
+                const timerGroup = document.querySelector(`.task-timer-group[data-task-id="${taskId}"]`);
+                const timerDisplay = timerGroup.querySelector('.timer-display');
+                
+                // Ferma il timer
+                clearInterval(timers[taskId]);
+                
+                // Riabilita tutti i pulsanti di avvio
+                document.querySelectorAll('.start-timer-btn').forEach(btn => {
+                    btn.disabled = false;
+                });
+                
+                // Disabilita il pulsante di stop
+                this.disabled = true;
+                
+                // Estrai le ore, minuti e secondi dal display
+                const timeString = timerDisplay.textContent;
+                const [hours, minutes, seconds] = timeString.split(':').map(Number);
+                
+                // Calcola i minuti totali
+                const totalMinutes = hours * 60 + minutes + (seconds >= 30 ? 1 : 0);
+                
+                // Prepara il modal per la conferma
+                document.getElementById('recordedTime').textContent = timeString;
+                document.getElementById('taskName').textContent = document.querySelector(`tr[data-task-id="${taskId}"] td:nth-child(2)`).textContent;
+                document.getElementById('taskIdForTimer').value = taskId;
+                document.getElementById('timerMinutes').value = totalMinutes;
+                
+                // Mostra il modal
+                saveTimerModal.show();
+            });
+        });
+        
+        // Gestione della conferma del salvataggio del tempo
+        document.getElementById('confirmSaveTimer').addEventListener('click', function() {
+            const taskId = document.getElementById('taskIdForTimer').value;
+            const minutes = document.getElementById('timerMinutes').value;
             
-            // Calcola il formato del tempo
-            const hours = Math.floor(totalMinutes / 60);
-            const minutes = totalMinutes % 60;
-            const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
-            
-            // Aggiorna il modal
-            document.getElementById('taskName').textContent = taskName;
-            document.getElementById('recordedTime').textContent = formattedTime;
-            document.getElementById('taskIdForTimer').value = taskId;
-            document.getElementById('timerMinutes').value = totalMinutes;
-            
-            // Mostra il modal
-            saveTimerModal.show();
-        }
-
-        // Funzione per salvare il tempo nel database
-        function saveTimerTime(taskId, minutes) {
+            // Invia i dati al server
             fetch(`/tasks/${taskId}/update-timer`, {
                 method: 'POST',
                 headers: {
@@ -485,84 +366,44 @@
                 if (data.success) {
                     // Aggiorna l'interfaccia utente
                     const taskRow = document.querySelector(`tr[data-task-id="${taskId}"]`);
-                    if (taskRow) {
-                        const actualMinutesCell = taskRow.cells[6]; // Colonna dei minuti effettivi
-                        actualMinutesCell.textContent = minutes;
+                    taskRow.querySelector('td:nth-child(8)').textContent = minutes;
+                    
+                    // Aggiorna la percentuale di progresso se necessario
+                    const progressBar = taskRow.querySelector('.progress-bar');
+                    const progressText = taskRow.querySelector('small');
+                    if (progressBar && progressText) {
+                        const estimatedMinutes = parseInt(taskRow.querySelector('td:nth-child(7)').textContent);
+                        const newPercentage = Math.min(100, Math.round((minutes / estimatedMinutes) * 100));
+                        progressBar.style.width = `${newPercentage}%`;
+                        progressBar.setAttribute('aria-valuenow', newPercentage);
+                        progressText.textContent = `${newPercentage}%`;
+                        
+                        // Aggiorna la classe se necessario
+                        if (minutes > estimatedMinutes) {
+                            progressBar.classList.add('bg-danger');
+                        } else {
+                            progressBar.classList.remove('bg-danger');
+                        }
                     }
                     
-                    // Mostra un messaggio di successo
-                    alert('Tempo salvato con successo!');
+                    // Resetta il display del timer
+                    const timerDisplay = document.querySelector(`.task-timer-group[data-task-id="${taskId}"] .timer-display`);
+                    timerDisplay.textContent = '00:00:00';
                     
-                    // Resetta il timer
-                    resetTimer(taskId);
+                    // Notifica l'utente
+                    alert('Tempo salvato con successo!');
                 } else {
-                    alert('Errore durante il salvataggio del tempo: ' + (data.message || 'Errore sconosciuto'));
+                    alert('Si è verificato un errore durante il salvataggio del tempo.');
                 }
+                
+                saveTimerModal.hide();
             })
             .catch(error => {
-                console.error('Errore durante il salvataggio del tempo:', error);
-                alert('Errore durante la comunicazione con il server.');
-            });
-        }
-
-        // Funzione per resettare un timer
-        function resetTimer(taskId) {
-            if (timers[taskId]) {
-                // Ferma l'intervallo se in esecuzione
-                if (timers[taskId].intervalId) {
-                    clearInterval(timers[taskId].intervalId);
-                }
-                
-                // Resetta lo stato del timer
-                timers[taskId].startTime = 0;
-                timers[taskId].elapsedTime = 0;
-                timers[taskId].intervalId = null;
-                
-                // Aggiorna il display
-                timers[taskId].display.textContent = '00:00:00';
-                timers[taskId].display.classList.remove('timer-active');
-                
-                // Reimposta i pulsanti
-                const timerGroup = document.querySelector(`.task-timer-group[data-task-id="${taskId}"]`);
-                const startBtn = timerGroup.querySelector('.start-timer-btn');
-                const stopBtn = timerGroup.querySelector('.stop-timer-btn');
-                startBtn.disabled = false;
-                stopBtn.disabled = true;
-            }
-            
-            // Rimuovi lo stato salvato
-            localStorage.removeItem(`taskTimer_${taskId}`);
-        }
-
-        // Aggiungi event listener ai pulsanti del timer
-        document.querySelectorAll('.start-timer-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const taskId = this.dataset.taskId;
-                startTimer(taskId);
+                console.error('Errore:', error);
+                alert('Si è verificato un errore durante il salvataggio del tempo.');
+                saveTimerModal.hide();
             });
         });
-
-        document.querySelectorAll('.stop-timer-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const taskId = this.dataset.taskId;
-                stopTimer(taskId);
-            });
-        });
-
-        // Event listener per il pulsante di conferma nel modal
-        document.getElementById('confirmSaveTimer').addEventListener('click', function() {
-            const taskId = document.getElementById('taskIdForTimer').value;
-            const minutes = document.getElementById('timerMinutes').value;
-            
-            // Chiudi il modal
-            saveTimerModal.hide();
-            
-            // Salva il tempo
-            saveTimerTime(taskId, minutes);
-        });
-
-        // Carica gli stati dei timer all'avvio
-        loadTimerStates();
     });
 </script>
 @endpush

@@ -456,9 +456,92 @@
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // FUNZIONI DI FORMATTAZIONE TEMPO - INIZIO
+    /**
+     * Converte minuti in formato "Xh Ymin"
+     * @param {number} minutes - Minuti totali
+     * @return {string} - Tempo formattato come "Xh Ymin"
+     */
+    function formatTimeHoursMinutes(minutes) {
+        if (minutes === null || minutes === undefined || isNaN(minutes)) {
+            return "0h 0min";
+        }
+        
+        // Arrotonda i minuti se sono un numero con decimali
+        minutes = Math.round(minutes);
+        
+        // Calcola ore e minuti
+        const hours = Math.floor(Math.abs(minutes) / 60);
+        const mins = Math.abs(minutes) % 60;
+        
+        // Gestisci valori negativi
+        const sign = minutes < 0 ? "-" : "";
+        
+        // Formatta l'output
+        return `${sign}${hours}h ${mins}min`;
+    }
+    
+    /**
+     * Converte ore decimali in formato "Xh Ymin"
+     * @param {number} hours - Ore in formato decimale
+     * @return {string} - Tempo formattato come "Xh Ymin"
+     */
+    function formatDecimalHoursToHoursMinutes(hours) {
+        if (hours === null || hours === undefined || isNaN(hours)) {
+            return "0h 0min";
+        }
+        
+        // Converti ore in minuti
+        const totalMinutes = Math.round(hours * 60);
+        
+        // Utilizza la funzione esistente
+        return formatTimeHoursMinutes(totalMinutes);
+    }
+    
+    /**
+     * Formatta tutti i valori orari nella tabella e nei contatori
+     */
+    function formatAllTimeDisplays() {
+        // Formatta i valori nella tabella risorse
+        const tableRows = document.querySelectorAll('#resourcesTable tbody tr');
+        tableRows.forEach(row => {
+            // Le colonne 3-9 contengono valori orari
+            for (let i = 2; i <= 8; i++) {
+                const cell = row.cells[i];
+                if (cell) {
+                    const value = parseFloat(cell.textContent);
+                    if (!isNaN(value)) {
+                        // Salva il valore originale per uso futuro
+                        cell.setAttribute('data-hours', value);
+                        // Formatta e aggiorna il testo
+                        cell.textContent = formatDecimalHoursToHoursMinutes(value);
+                    }
+                }
+            }
+        });
+        
+        // Formatta i contatori globali
+        const totalElements = [
+            { id: 'totalEstimatedHours', selector: '#totalEstimatedHours' },
+            { id: 'totalActualHours', selector: '#totalActualHours' },
+            { id: 'totalTreasureHours', selector: '#totalTreasureHours' }
+        ];
+        
+        totalElements.forEach(item => {
+            const element = document.querySelector(item.selector);
+            if (element) {
+                const value = parseFloat(element.textContent);
+                if (!isNaN(value)) {
+                    element.setAttribute('data-hours', value);
+                    element.textContent = formatDecimalHoursToHoursMinutes(value);
+                }
+            }
+        });
+    }
+    // FUNZIONI DI FORMATTAZIONE TEMPO - FINE
+
     // Inizializza Select2 per i filtri multipli
     $('.select2-multiple').select2({
         theme: 'bootstrap-5',
@@ -498,54 +581,60 @@ document.addEventListener('DOMContentLoaded', function() {
      * Carica i dettagli dei task per la risorsa selezionata
      */
     function loadTaskDetails() {
-    if (!currentResourceId) return;
-    
-    // Prepara i filtri
-    const clientIds = $('#client_ids').val() || [];
-    const projectIds = $('#project_ids').val() || [];
-    
-    // Costruisci correttamente la query string
-    const queryParams = new URLSearchParams();
-    
-    // Aggiungi i filtri per client_ids
-    if (clientIds.length > 0) {
-        clientIds.forEach(id => queryParams.append('client_ids[]', id));
-    }
-    
-    // Aggiungi i filtri per project_ids
-    if (projectIds.length > 0) {
-        projectIds.forEach(id => queryParams.append('project_ids[]', id));
-    }
-    
-    // Chiamata AJAX corretta con la nuova gestione dei parametri
-    fetch(`/resource/${currentResourceId}/tasks?${queryParams.toString()}`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
+        if (!currentResourceId) return;
+        
+        // Prepara i filtri
+        const clientIds = $('#client_ids').val() || [];
+        const projectIds = $('#project_ids').val() || [];
+        
+        // Costruisci correttamente la query string
+        const queryParams = new URLSearchParams();
+        
+        // Aggiungi i filtri per client_ids
+        if (clientIds.length > 0) {
+            clientIds.forEach(id => queryParams.append('client_ids[]', id));
         }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+        
+        // Aggiungi i filtri per project_ids
+        if (projectIds.length > 0) {
+            projectIds.forEach(id => queryParams.append('project_ids[]', id));
         }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            taskDetails = data.taskDetails;
-            populateTaskTable(taskDetails);
-            updateTaskChart(taskDetails);
-        } else {
-            console.error('Risposta ricevuta con success=false:', data);
-        }
-    })
-    .catch(error => {
-        console.error('Errore durante il caricamento dei task:', error);
-        // Mostra un messaggio di errore nella tabella
+        
+        // Aggiungi un parametro per indicare che vogliamo task unici - CORREZIONE QUI
+        queryParams.append('unique_tasks', '1');
+        
+        // Mostra un indicatore di caricamento
         const tableBody = document.querySelector('#resourceTaskTable tbody');
-        tableBody.innerHTML = '<tr><td colspan="10" class="text-center text-danger">Errore durante il caricamento dei task. Dettagli in console.</td></tr>';
-    });
-}
+        tableBody.innerHTML = '<tr><td colspan="10" class="text-center">Caricamento dati in corso...</td></tr>';
+        
+        // Chiamata AJAX corretta con la nuova gestione dei parametri
+        fetch(`/resource/${currentResourceId}/tasks?${queryParams.toString()}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                taskDetails = data.taskDetails;
+                populateTaskTable(taskDetails);
+                updateTaskChart(taskDetails);
+            } else {
+                console.error('Risposta ricevuta con success=false:', data);
+                tableBody.innerHTML = '<tr><td colspan="10" class="text-center text-danger">Errore durante il caricamento dei task.</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('Errore durante il caricamento dei task:', error);
+            tableBody.innerHTML = '<tr><td colspan="10" class="text-center text-danger">Errore durante il caricamento dei task. Dettagli in console.</td></tr>';
+        });
+    }
     
     /**
      * Popola la tabella dei task
@@ -563,6 +652,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         taskDetails.forEach(task => {
             const row = document.createElement('tr');
+            // Determina la classe CSS per il tesoretto (positivo = verde, negativo = rosso)
             const treasureClass = task.treasure_hours >= 0 ? 'treasure-positive' : 'treasure-negative';
             
             // Aggiungi classe per task in ritardo o sovrastimati
@@ -572,6 +662,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 row.classList.add('table-warning');
             }
             
+            // Formatta i valori delle ore in formato "Xh Ymin"
+            const estimatedHoursFormatted = formatDecimalHoursToHoursMinutes(task.estimated_hours);
+            const actualHoursFormatted = formatDecimalHoursToHoursMinutes(task.actual_hours);
+            const treasureHoursFormatted = formatDecimalHoursToHoursMinutes(task.treasure_hours);
+            
             row.innerHTML = `
                 <td>${task.name}</td>
                 <td>${task.activity_name}</td>
@@ -579,9 +674,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td>${task.client_name}</td>
                 <td><span class="badge ${task.hours_type === 'standard' ? 'bg-info' : 'bg-warning'}">${task.hours_type_label}</span></td>
                 <td><span class="badge ${getStatusBadgeClass(task.status)}">${task.status_label}</span></td>
-                <td>${task.estimated_hours.toFixed(2)}</td>
-                <td>${task.actual_hours.toFixed(2)}</td>
-                <td class="${treasureClass}">${task.treasure_hours.toFixed(2)}</td>
+                <td data-hours="${task.estimated_hours}">${estimatedHoursFormatted}</td>
+                <td data-hours="${task.actual_hours}">${actualHoursFormatted}</td>
+                <td class="${treasureClass}" data-hours="${task.treasure_hours}">${treasureHoursFormatted}</td>
                 <td>
                     <div class="progress">
                         <div class="progress-bar ${getCompletionBarClass(task.completion_percentage, task.status)}" 
@@ -659,6 +754,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         y: {
                             beginAtZero: true
                         }
+                    },
+                    // Aggiungi tooltip personalizzato per mostrare ore in formato "Xh Ymin"
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.raw || 0;
+                                    return label + ': ' + formatDecimalHoursToHoursMinutes(value);
+                                }
+                            }
+                        }
                     }
                 }
             });
@@ -693,62 +800,334 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     /**
-     * Gestisce l'esportazione dei dati
+     * Carica i task di un'attività specifica
      */
-    function handleExport(e) {
-        e.preventDefault();
+    function loadActivityTasks(activityId, activityName) {
+        if (!currentResourceId) return;
         
-        // Ottieni il tipo di esportazione
-        const exportType = this.getAttribute('data-type');
+        // Aggiorna il nome dell'attività nel dettaglio
+        document.getElementById('activityDetailName').textContent = activityName;
         
-        // Crea un form temporaneo per l'invio dei dati
-        const tempForm = document.createElement('form');
-        tempForm.method = 'GET';
-        tempForm.action = '{{ route("hours.export") }}';
-        tempForm.style.display = 'none';
-        
-        // Aggiungi il tipo di esportazione
-        const exportTypeInput = document.createElement('input');
-        exportTypeInput.type = 'hidden';
-        exportTypeInput.name = 'export_type';
-        exportTypeInput.value = exportType;
-        tempForm.appendChild(exportTypeInput);
-        
-        // Aggiungi i filtri correnti
+        // Prepara i filtri
         const clientIds = $('#client_ids').val() || [];
         const projectIds = $('#project_ids').val() || [];
-        const resourceIds = $('#resource_ids').val() || [];
         
-        clientIds.forEach(id => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'client_ids[]';
-            input.value = id;
-            tempForm.appendChild(input);
+        // Costruisci correttamente la query string
+        const queryParams = new URLSearchParams();
+        
+        // Aggiungi l'activity_id
+        queryParams.append('activity_id', activityId);
+        
+        // Aggiungi i filtri per client_ids
+        if (clientIds.length > 0) {
+            clientIds.forEach(id => queryParams.append('client_ids[]', id));
+        }
+        
+        // Aggiungi i filtri per project_ids
+        if (projectIds.length > 0) {
+            projectIds.forEach(id => queryParams.append('project_ids[]', id));
+        }
+        
+        // Aggiungi un parametro per indicare che vogliamo task unici - CORREZIONE QUI
+        queryParams.append('unique_tasks', '1');
+        
+        // Mostra un indicatore di caricamento nel contenitore dei dettagli task
+        const tableBody = document.querySelector('#taskDetailTable tbody');
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Caricamento dettagli task in corso...</td></tr>';
+        
+        // Mostra la sezione dei dettagli task prima di avviare la richiesta
+        document.getElementById('taskDetail').style.display = 'block';
+        
+        // Chiamata AJAX corretta
+        fetch(`/resource/${currentResourceId}/tasks?${queryParams.toString()}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                populateTaskDetailTable(data.taskDetails);
+                // Scorri alla visualizzazione dettagli task
+                document.getElementById('taskDetail').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                console.error('Risposta ricevuta con success=false:', data);
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Errore durante il caricamento dei task.</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('Errore durante il caricamento dei task:', error);
+            // Mostra un messaggio di errore
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Errore durante il caricamento dei task. Dettagli in console.</td></tr>';
         });
+    }
+    
+    /**
+     * Popola la tabella dei dettagli task
+     */
+    function populateTaskDetailTable(taskDetails) {
+        const tableBody = document.querySelector('#taskDetailTable tbody');
+        tableBody.innerHTML = '';
         
-        projectIds.forEach(id => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'project_ids[]';
-            input.value = id;
-            tempForm.appendChild(input);
+        if (!taskDetails || taskDetails.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="6" class="text-center">Nessun task disponibile per questa attività</td>';
+            tableBody.appendChild(row);
+            return;
+        }
+        
+        taskDetails.forEach(task => {
+            const row = document.createElement('tr');
+            const treasureClass = task.treasure_hours >= 0 ? 'treasure-positive' : 'treasure-negative';
+            
+            // Aggiungi classe per task in ritardo o sovrastimati
+            if (task.is_overdue) {
+                row.classList.add('table-danger');
+            } else if (task.is_over_estimated) {
+                row.classList.add('table-warning');
+            }
+            
+            // Formatta i valori delle ore in formato "Xh Ymin"
+            const estimatedHoursFormatted = formatDecimalHoursToHoursMinutes(task.estimated_hours);
+            const actualHoursFormatted = formatDecimalHoursToHoursMinutes(task.actual_hours);
+            const treasureHoursFormatted = formatDecimalHoursToHoursMinutes(task.treasure_hours);
+            
+            row.innerHTML = `
+                <td>${task.name}</td>
+                <td><span class="badge ${getStatusBadgeClass(task.status)}">${task.status_label}</span></td>
+                <td data-hours="${task.estimated_hours}">${estimatedHoursFormatted}</td>
+                <td data-hours="${task.actual_hours}">${actualHoursFormatted}</td>
+                <td class="${treasureClass}" data-hours="${task.treasure_hours}">${treasureHoursFormatted}</td>
+                <td>
+                    <div class="progress">
+                        <div class="progress-bar ${getCompletionBarClass(task.completion_percentage, task.status)}" 
+                             role="progressbar" style="width: ${task.completion_percentage}%">
+                            ${task.completion_percentage.toFixed(0)}%
+                        </div>
+                    </div>
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
         });
+    }
+    
+    /**
+     * Aggiorna il grafico per cliente
+     */
+    function updateClientChart(resourceData) {
+        try {
+            console.log('Dati client chart:', resourceData.by_client);
+            
+            if (!clientChart) {
+                console.error('Client chart non inizializzato');
+                return;
+            }
+            
+            if (!resourceData.by_client || !Array.isArray(resourceData.by_client) || resourceData.by_client.length === 0) {
+                console.warn('Nessun dato cliente disponibile');
+                clientChart.data.labels = [];
+                clientChart.data.datasets[0].data = [];
+                clientChart.data.datasets[1].data = [];
+                clientChart.data.datasets[2].data = [];
+                clientChart.update();
+                return;
+            }
+            
+            const labels = resourceData.by_client.map(client => client.name || 'N/D');
+            const estimatedData = resourceData.by_client.map(client => client.estimated_hours || 0);
+            const actualData = resourceData.by_client.map(client => client.actual_hours || 0);
+            const treasureData = resourceData.by_client.map(client => client.treasure_hours || 0);
+            
+            clientChart.data.labels = labels;
+            clientChart.data.datasets[0].data = estimatedData;
+            clientChart.data.datasets[1].data = actualData;
+            clientChart.data.datasets[2].data = treasureData;
+            
+            // Aggiorna le opzioni per mostrare tooltip con ore in formato "Xh Ymin"
+            clientChart.options.plugins = clientChart.options.plugins || {};
+            clientChart.options.plugins.tooltip = clientChart.options.plugins.tooltip || {};
+            clientChart.options.plugins.tooltip.callbacks = {
+                label: function(context) {
+                    const label = context.dataset.label || '';
+                    const value = context.raw || 0;
+                    return label + ': ' + formatDecimalHoursToHoursMinutes(value);
+                }
+            };
+            
+            clientChart.update();
+        } catch (error) {
+            console.error('Errore in updateClientChart:', error);
+        }
+    }
+    
+    /**
+     * Aggiorna il grafico per progetto
+     */
+    function updateProjectChart(resourceData) {
+        try {
+            console.log('Dati project chart:', resourceData.by_project);
+            
+            if (!projectChart) {
+                console.error('Project chart non inizializzato');
+                return;
+            }
+            
+            if (!resourceData.by_project || !Array.isArray(resourceData.by_project) || resourceData.by_project.length === 0) {
+                console.warn('Nessun dato progetto disponibile');
+                projectChart.data.labels = [];
+                projectChart.data.datasets[0].data = [];
+                projectChart.data.datasets[1].data = [];
+                projectChart.data.datasets[2].data = [];
+                projectChart.update();
+                return;
+            }
+            
+            const labels = resourceData.by_project.map(project => project.name || 'N/D');
+            const estimatedData = resourceData.by_project.map(project => project.estimated_hours || 0);
+            const actualData = resourceData.by_project.map(project => project.actual_hours || 0);
+            const treasureData = resourceData.by_project.map(project => project.treasure_hours || 0);
+            
+            projectChart.data.labels = labels;
+            projectChart.data.datasets[0].data = estimatedData;
+            projectChart.data.datasets[1].data = actualData;
+            projectChart.data.datasets[2].data = treasureData;
+            
+            // Aggiorna le opzioni per mostrare tooltip con ore in formato "Xh Ymin"
+            projectChart.options.plugins = projectChart.options.plugins || {};
+            projectChart.options.plugins.tooltip = projectChart.options.plugins.tooltip || {};
+            projectChart.options.plugins.tooltip.callbacks = {
+                label: function(context) {
+                    const label = context.dataset.label || '';
+                    const value = context.raw || 0;
+                    return label + ': ' + formatDecimalHoursToHoursMinutes(value);
+                }
+            };
+            
+            projectChart.update();
+        } catch (error) {
+            console.error('Errore in updateProjectChart:', error);
+        }
+    }
+    
+    /**
+     * Applica i filtri selezionati
+     */
+    function applyFilters() {
+        const formData = new FormData(document.getElementById('filterForm'));
+        const clientIds = formData.getAll('client_ids[]');
+        const projectIds = formData.getAll('project_ids[]');
+        const resourceIds = formData.getAll('resource_ids[]');
         
-        resourceIds.forEach(id => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'resource_ids[]';
-            input.value = id;
-            tempForm.appendChild(input);
+        // Costruisci i parametri di query
+        const queryParams = new URLSearchParams();
+        
+        // Aggiungi i filtri in modo sicuro
+        if (clientIds.length > 0) {
+            clientIds.forEach(id => {
+                if (id) queryParams.append('client_ids[]', id);
+            });
+        }
+        
+        if (projectIds.length > 0) {
+            projectIds.forEach(id => {
+                if (id) queryParams.append('project_ids[]', id);
+            });
+        }
+        
+        if (resourceIds.length > 0) {
+            resourceIds.forEach(id => {
+                if (id) queryParams.append('resource_ids[]', id);
+            });
+        }
+        
+        // Mostra un indicatore di caricamento nella tabella risorse
+        const tableBody = document.querySelector('#resourcesTable tbody');
+        tableBody.innerHTML = '<tr><td colspan="11" class="text-center">Caricamento dati in corso...</td></tr>';
+        
+        // Invia la richiesta AJAX
+        fetch(`/hours/filter?${queryParams.toString()}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Errore HTTP! stato: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Assicurati che resourcesData sia un array
+                resourcesData = Array.isArray(data.resourcesData) ? data.resourcesData : [];
+                
+                // Aggiorna la dashboard
+                updateGlobalStats();
+                populateResourcesTable();
+                
+                // Applica la formattazione ore e minuti
+                formatAllTimeDisplays();
+                
+                // Se una risorsa è attualmente selezionata, aggiorna la visualizzazione dettagliata
+                if (currentResourceId) {
+                    const resourceData = resourcesData.find(r => r.id == currentResourceId);
+                    if (resourceData) {
+                        // Assicurati che i dati siano corretti prima di passarli
+                        if (resourceData.by_client && Array.isArray(resourceData.by_client)) {
+                            populateClientTable(resourceData);
+                        }
+                        if (resourceData.by_project && Array.isArray(resourceData.by_project)) {
+                            populateProjectTable(resourceData);
+                        }
+                        populateActivityTable(resourceData);
+                        updateClientChart(resourceData);
+                        updateProjectChart(resourceData);
+                        
+                        // Se il tab task è attivo, ricarica i dati dei task
+                        if (document.getElementById('task-tab').classList.contains('active')) {
+                            loadTaskDetails();
+                        }
+                    } else {
+                        hideResourceDetail();
+                    }
+                }
+            } else {
+                console.error('Errore durante l\'applicazione dei filtri:', data);
+                const tableBody = document.querySelector('#resourcesTable tbody');
+                tableBody.innerHTML = '<tr><td colspan="11" class="text-center text-danger">Errore durante l\'applicazione dei filtri.</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('Errore durante l\'applicazione dei filtri:', error);
+            const tableBody = document.querySelector('#resourcesTable tbody');
+            tableBody.innerHTML = '<tr><td colspan="11" class="text-center text-danger">Errore durante l\'applicazione dei filtri. Dettagli in console.</td></tr>';
         });
+    }
+    
+    /**
+     * Resetta i filtri
+     */
+    function resetFilters() {
+        // Resetta i select con Select2
+        $('.select2-multiple').val(null).trigger('change');
         
-        // Aggiungi il form al corpo del documento e invialo
-        document.body.appendChild(tempForm);
-        tempForm.submit();
-        
-        // Rimuovi il form dopo l'invio
-        document.body.removeChild(tempForm);
+        // Applica i filtri resettati
+        applyFilters();
+    }
+    
+    /**
+     * Aggiorna i dati
+     */
+    function refreshData() {
+        window.location.reload();
     }
     
     /**
@@ -758,6 +1137,9 @@ document.addEventListener('DOMContentLoaded', function() {
         updateGlobalStats();
         populateResourcesTable();
         initializeCharts();
+        
+        // Formatta tutti i valori orari
+        formatAllTimeDisplays();
     }
     
     /**
@@ -779,10 +1161,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Aggiorna il DOM
         document.getElementById('totalEstimatedHours').textContent = totalEstimated.toFixed(2);
+        document.getElementById('totalEstimatedHours').setAttribute('data-hours', totalEstimated);
+        
         document.getElementById('totalActualHours').textContent = totalActual.toFixed(2);
+        document.getElementById('totalActualHours').setAttribute('data-hours', totalActual);
         
         const treasureElement = document.getElementById('totalTreasureHours');
         treasureElement.textContent = totalTreasure.toFixed(2);
+        treasureElement.setAttribute('data-hours', totalTreasure);
         treasureElement.className = totalTreasure >= 0 ? 'treasure-positive' : 'treasure-negative';
         
         document.getElementById('efficiency').textContent = efficiency.toFixed(2) + '%';
@@ -798,6 +1184,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const tableBody = document.querySelector('#resourcesTable tbody');
         tableBody.innerHTML = '';
         
+        if (!resourcesData || resourcesData.length === 0) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td colspan="11" class="text-center">Nessun dato disponibile</td>';
+            tableBody.appendChild(row);
+            return;
+        }
+        
         resourcesData.forEach(resource => {
             const row = document.createElement('tr');
             
@@ -806,16 +1199,25 @@ document.addEventListener('DOMContentLoaded', function() {
             const stdRemainingClass = resource.remaining_standard_hours >= 0 ? 'text-success' : 'text-danger';
             const extraRemainingClass = resource.remaining_extra_hours >= 0 ? 'text-success' : 'text-danger';
             
+            // Salva i valori originali come attributi data per uso futuro
+            const standardHours = resource.standard_hours_per_year.toFixed(2);
+            const remainingStdHours = resource.remaining_standard_hours.toFixed(2);
+            const extraHours = resource.extra_hours_per_year.toFixed(2);
+            const remainingExtraHours = resource.remaining_extra_hours.toFixed(2);
+            const estimatedHours = resource.total_estimated_hours.toFixed(2);
+            const actualHours = resource.total_actual_hours.toFixed(2);
+            const treasureHours = resource.total_treasure_hours.toFixed(2);
+            
             row.innerHTML = `
                 <td>${resource.name}</td>
                 <td>${resource.role}</td>
-                <td>${resource.standard_hours_per_year.toFixed(2)}</td>
-                <td class="${stdRemainingClass} fw-bold">${resource.remaining_standard_hours.toFixed(2)}</td>
-                <td>${resource.extra_hours_per_year.toFixed(2)}</td>
-                <td class="${extraRemainingClass} fw-bold">${resource.remaining_extra_hours.toFixed(2)}</td>
-                <td>${resource.total_estimated_hours.toFixed(2)}</td>
-                <td>${resource.total_actual_hours.toFixed(2)}</td>
-                <td class="${treasureClass} fw-bold">${resource.total_treasure_hours.toFixed(2)}</td>
+                <td data-hours="${standardHours}">${standardHours}</td>
+                <td class="${stdRemainingClass} fw-bold" data-hours="${remainingStdHours}">${remainingStdHours}</td>
+                <td data-hours="${extraHours}">${extraHours}</td>
+                <td class="${extraRemainingClass} fw-bold" data-hours="${remainingExtraHours}">${remainingExtraHours}</td>
+                <td data-hours="${estimatedHours}">${estimatedHours}</td>
+                <td data-hours="${actualHours}">${actualHours}</td>
+                <td class="${treasureClass} fw-bold" data-hours="${treasureHours}">${treasureHours}</td>
                 <td>
                     <div class="small">Standard: ${resource.standard_hours_usage}%</div>
                     <div class="progress mb-2">
@@ -878,6 +1280,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: {
                         beginAtZero: true
                     }
+                },
+                // Aggiungi un tooltip personalizzato
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const value = context.raw || 0;
+                                return label + ': ' + formatDecimalHoursToHoursMinutes(value);
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -917,6 +1331,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 scales: {
                     y: {
                         beginAtZero: true
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const value = context.raw || 0;
+                                return label + ': ' + formatDecimalHoursToHoursMinutes(value);
+                            }
+                        }
                     }
                 }
             }
@@ -958,6 +1383,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: {
                         beginAtZero: true
                     }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const value = context.raw || 0;
+                                return label + ': ' + formatDecimalHoursToHoursMinutes(value);
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -998,6 +1434,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: {
                         beginAtZero: true
                     }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const value = context.raw || 0;
+                                return label + ': ' + formatDecimalHoursToHoursMinutes(value);
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -1017,9 +1464,27 @@ document.addEventListener('DOMContentLoaded', function() {
      * Mostra i dettagli della risorsa selezionata
      */
     function showResourceDetail(resourceId) {
+        // Log dettagliato per diagnosticare il problema
+        console.log('Tutti i dati delle risorse:', resourcesData);
+        console.log('ID risorsa selezionata:', resourceId);
+        
         // Trova la risorsa corrispondente
         const resourceData = resourcesData.find(r => r.id == resourceId);
-        if (!resourceData) return;
+        
+        if (!resourceData) {
+            console.error('Nessuna risorsa trovata con ID:', resourceId);
+            alert('Impossibile caricare i dettagli della risorsa.');
+            return;
+        }
+        
+        // Log dettagliato della risorsa selezionata
+        console.log('Dati risorsa selezionata:', resourceData);
+        console.log('Chiavi nella risorsa selezionata:', Object.keys(resourceData));
+        
+        // Controlli aggiuntivi sui dati
+        console.log('by_client:', resourceData.by_client);
+        console.log('by_project:', resourceData.by_project);
+        console.log('by_activity:', resourceData.by_activity);
         
         // Imposta l'ID della risorsa corrente
         currentResourceId = resourceId;
@@ -1027,14 +1492,43 @@ document.addEventListener('DOMContentLoaded', function() {
         // Aggiorna il titolo
         document.getElementById('detailResourceName').textContent = resourceData.name;
         
+        // Funzione di popolazione sicura
+        function safePopulate(populateFunction, dataKey) {
+            try {
+                // Forza la conversione in array se necessario
+                const data = Array.isArray(resourceData[dataKey]) 
+                    ? resourceData[dataKey] 
+                    : (resourceData[dataKey] ? [resourceData[dataKey]] : []);
+                
+                console.log(`Dati per ${dataKey}:`, data);
+                
+                if (data.length > 0) {
+                    populateFunction({ [dataKey]: data });
+                } else {
+                    console.warn(`Nessun dato disponibile per ${dataKey}`);
+                    // Pulisci la tabella
+                    const tableBody = document.querySelector(`#resource${dataKey.charAt(0).toUpperCase() + dataKey.slice(1)}Table tbody`);
+                    if (tableBody) {
+                        tableBody.innerHTML = `<tr><td colspan="10" class="text-center">Nessun dato disponibile</td></tr>`;
+                    }
+                }
+            } catch (error) {
+                console.error(`Errore durante la popolazione di ${dataKey}:`, error);
+            }
+        }
+        
         // Popola le tabelle
-        populateClientTable(resourceData);
-        populateProjectTable(resourceData);
-        populateActivityTable(resourceData);
+        safePopulate(populateClientTable, 'by_client');
+        safePopulate(populateProjectTable, 'by_project');
+        safePopulate(populateActivityTable, 'by_activity');
         
         // Aggiorna i grafici
-        updateClientChart(resourceData);
-        updateProjectChart(resourceData);
+        try {
+            updateClientChart(resourceData);
+            updateProjectChart(resourceData);
+        } catch (error) {
+            console.error('Errore durante l\'aggiornamento dei grafici:', error);
+        }
         
         // Mostra il pannello dei dettagli
         document.getElementById('resourceDetail').style.display = 'block';
@@ -1042,16 +1536,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Scorri alla visualizzazione dettagli
         document.getElementById('resourceDetail').scrollIntoView({ behavior: 'smooth' });
     }
-    
-    /**
-     * Nasconde i dettagli della risorsa
-     */
-    function hideResourceDetail() {
-        document.getElementById('resourceDetail').style.display = 'none';
-        document.getElementById('taskDetail').style.display = 'none'; // Nasconde anche il dettaglio task
-        currentResourceId = null;
-    }
-    
+
     /**
      * Popola la tabella per cliente
      */
@@ -1059,9 +1544,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const tableBody = document.querySelector('#resourceClientTable tbody');
         tableBody.innerHTML = '';
         
-        if (!resourceData.by_client || resourceData.by_client.length === 0) {
+        // Log per debug
+        console.log('Dati client per tabella:', resourceData.by_client);
+        
+        if (!resourceData.by_client || !Array.isArray(resourceData.by_client) || resourceData.by_client.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="5" class="text-center">Nessun dato disponibile</td>';
+            row.innerHTML = '<td colspan="5" class="text-center">Nessun dato disponibile per i clienti</td>';
             tableBody.appendChild(row);
             return;
         }
@@ -1073,11 +1561,16 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const treasureClass = client.treasure_hours >= 0 ? 'treasure-positive' : 'treasure-negative';
             
+            // Formatta i valori delle ore in formato "Xh Ymin"
+            const estimatedHoursFormatted = formatDecimalHoursToHoursMinutes(client.estimated_hours || 0);
+            const actualHoursFormatted = formatDecimalHoursToHoursMinutes(client.actual_hours || 0);
+            const treasureHoursFormatted = formatDecimalHoursToHoursMinutes(client.treasure_hours || 0);
+            
             row.innerHTML = `
-                <td>${client.name}</td>
-                <td>${client.estimated_hours.toFixed(2)}</td>
-                <td>${client.actual_hours.toFixed(2)}</td>
-                <td class="${treasureClass}">${client.treasure_hours.toFixed(2)}</td>
+                <td>${client.name || 'N/D'}</td>
+                <td data-hours="${client.estimated_hours || 0}">${estimatedHoursFormatted}</td>
+                <td data-hours="${client.actual_hours || 0}">${actualHoursFormatted}</td>
+                <td class="${treasureClass}" data-hours="${client.treasure_hours || 0}">${treasureHoursFormatted}</td>
                 <td>
                     <div class="progress">
                         <div class="progress-bar" role="progressbar" 
@@ -1091,7 +1584,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tableBody.appendChild(row);
         });
     }
-    
+
     /**
      * Popola la tabella per progetto
      */
@@ -1099,9 +1592,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const tableBody = document.querySelector('#resourceProjectTable tbody');
         tableBody.innerHTML = '';
         
+        console.log('Dati progetti per tabella:', resourceData.by_project);
+        
         if (!resourceData.by_project || resourceData.by_project.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="6" class="text-center">Nessun dato disponibile</td>';
+            row.innerHTML = '<td colspan="6" class="text-center">Nessun dato disponibile per i progetti</td>';
             tableBody.appendChild(row);
             return;
         }
@@ -1113,12 +1608,17 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const treasureClass = project.treasure_hours >= 0 ? 'treasure-positive' : 'treasure-negative';
             
+            // Formatta i valori delle ore in formato "Xh Ymin"
+            const estimatedHoursFormatted = formatDecimalHoursToHoursMinutes(project.estimated_hours || 0);
+            const actualHoursFormatted = formatDecimalHoursToHoursMinutes(project.actual_hours || 0);
+            const treasureHoursFormatted = formatDecimalHoursToHoursMinutes(project.treasure_hours || 0);
+            
             row.innerHTML = `
-                <td>${project.name}</td>
-                <td>${project.client_name}</td>
-                <td>${project.estimated_hours.toFixed(2)}</td>
-                <td>${project.actual_hours.toFixed(2)}</td>
-                <td class="${treasureClass}">${project.treasure_hours.toFixed(2)}</td>
+                <td>${project.name || 'N/D'}</td>
+                <td>${project.client_name || 'N/D'}</td>
+                <td data-hours="${project.estimated_hours || 0}">${estimatedHoursFormatted}</td>
+                <td data-hours="${project.actual_hours || 0}">${actualHoursFormatted}</td>
+                <td class="${treasureClass}" data-hours="${project.treasure_hours || 0}">${treasureHoursFormatted}</td>
                 <td>
                     <div class="progress">
                         <div class="progress-bar" role="progressbar" 
@@ -1132,7 +1632,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tableBody.appendChild(row);
         });
     }
-    
+
     /**
      * Popola la tabella per attività
      */
@@ -1180,15 +1680,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     hoursTypeBadge = '<span class="badge bg-secondary">N/D</span>';
             }
             
+            // Formatta i valori delle ore in formato "Xh Ymin"
+            const estimatedHoursFormatted = formatDecimalHoursToHoursMinutes(activity.estimated_hours);
+            const actualHoursFormatted = formatDecimalHoursToHoursMinutes(activity.actual_hours);
+            const treasureHoursFormatted = formatDecimalHoursToHoursMinutes(activity.treasure_hours);
+            
             row.innerHTML = `
                 <td>${activity.name}</td>
                 <td>${activity.project_name}</td>
                 <td>${activity.client_name}</td>
                 <td>${hoursTypeBadge}</td>
                 <td>${statusBadge}</td>
-                <td>${activity.estimated_hours.toFixed(2)}</td>
-                <td>${activity.actual_hours.toFixed(2)}</td>
-                <td class="${treasureClass}">${activity.treasure_hours.toFixed(2)}</td>
+                <td data-hours="${activity.estimated_hours}">${estimatedHoursFormatted}</td>
+                <td data-hours="${activity.actual_hours}">${actualHoursFormatted}</td>
+                <td class="${treasureClass}" data-hours="${activity.treasure_hours}">${treasureHoursFormatted}</td>
                 <td>
                     <button class="btn btn-sm btn-info view-tasks" data-activity-id="${activity.id}">
                         <i class="fas fa-tasks"></i> Vedi Task
@@ -1208,232 +1713,78 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     /**
-     * Carica i task di un'attività specifica
+     * Nasconde i dettagli della risorsa
      */
-    function loadActivityTasks(activityId, activityName) {
-    if (!currentResourceId) return;
-    
-    // Aggiorna il nome dell'attività nel dettaglio
-    document.getElementById('activityDetailName').textContent = activityName;
-    
-    // Prepara i filtri
-    const clientIds = $('#client_ids').val() || [];
-    const projectIds = $('#project_ids').val() || [];
-    
-    // Costruisci correttamente la query string
-    const queryParams = new URLSearchParams();
-    
-    // Aggiungi l'activity_id
-    queryParams.append('activity_id', activityId);
-    
-    // Aggiungi i filtri per client_ids
-    if (clientIds.length > 0) {
-        clientIds.forEach(id => queryParams.append('client_ids[]', id));
+    function hideResourceDetail() {
+        document.getElementById('resourceDetail').style.display = 'none';
+        document.getElementById('taskDetail').style.display = 'none'; // Nasconde anche il dettaglio task
+        currentResourceId = null;
     }
-    
-    // Aggiungi i filtri per project_ids
-    if (projectIds.length > 0) {
-        projectIds.forEach(id => queryParams.append('project_ids[]', id));
-    }
-    
-    // Chiamata AJAX corretta 
-    fetch(`/resource/${currentResourceId}/tasks?${queryParams.toString()}`, {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            populateTaskDetailTable(data.taskDetails);
-            // Mostra la sezione dei dettagli task
-            document.getElementById('taskDetail').style.display = 'block';
-            // Scorri alla visualizzazione dettagli task
-            document.getElementById('taskDetail').scrollIntoView({ behavior: 'smooth' });
-        } else {
-            console.error('Risposta ricevuta con success=false:', data);
-            document.getElementById('taskDetail').style.display = 'none';
-        }
-    })
-    .catch(error => {
-        console.error('Errore durante il caricamento dei task:', error);
-        // Mostra un messaggio di errore
-        document.getElementById('taskDetail').style.display = 'none';
-        alert('Errore durante il caricamento dei task dell\'attività.');
-    });
-}
     
     /**
-     * Popola la tabella dei dettagli task
+     * Gestisce l'esportazione dei dati
      */
-    function populateTaskDetailTable(taskDetails) {
-        const tableBody = document.querySelector('#taskDetailTable tbody');
-        tableBody.innerHTML = '';
+    function handleExport(e) {
+        e.preventDefault();
         
-        if (!taskDetails || taskDetails.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = '<td colspan="6" class="text-center">Nessun task disponibile per questa attività</td>';
-            tableBody.appendChild(row);
-            return;
-        }
+        // Ottieni il tipo di esportazione
+        const exportType = this.getAttribute('data-type');
         
-        taskDetails.forEach(task => {
-            const row = document.createElement('tr');
-            const treasureClass = task.treasure_hours >= 0 ? 'treasure-positive' : 'treasure-negative';
-            
-            // Aggiungi classe per task in ritardo o sovrastimati
-            if (task.is_overdue) {
-                row.classList.add('table-danger');
-            } else if (task.is_over_estimated) {
-                row.classList.add('table-warning');
-            }
-            
-            row.innerHTML = `
-                <td>${task.name}</td>
-                <td><span class="badge ${getStatusBadgeClass(task.status)}">${task.status_label}</span></td>
-                <td>${task.estimated_hours.toFixed(2)}</td>
-                <td>${task.actual_hours.toFixed(2)}</td>
-                <td class="${treasureClass}">${task.treasure_hours.toFixed(2)}</td>
-                <td>
-                    <div class="progress">
-                        <div class="progress-bar ${getCompletionBarClass(task.completion_percentage, task.status)}" 
-                             role="progressbar" style="width: ${task.completion_percentage}%">
-                            ${task.completion_percentage.toFixed(0)}%
-                        </div>
-                    </div>
-                </td>
-            `;
-            
-            tableBody.appendChild(row);
+        // Crea un form temporaneo per l'invio dei dati
+        const tempForm = document.createElement('form');
+        tempForm.method = 'GET';
+        tempForm.action = '{{ route("hours.export") }}';
+        tempForm.style.display = 'none';
+        
+        // Aggiungi il tipo di esportazione
+        const exportTypeInput = document.createElement('input');
+        exportTypeInput.type = 'hidden';
+        exportTypeInput.name = 'export_type';
+        exportTypeInput.value = exportType;
+        tempForm.appendChild(exportTypeInput);
+        
+        // Aggiungi i filtri correnti
+        const clientIds = $('#client_ids').val() || [];
+        const projectIds = $('#project_ids').val() || [];
+        const resourceIds = $('#resource_ids').val() || [];
+        
+        // Aggiungi un parametro per indicare che vogliamo dati unici - CORREZIONE QUI
+        const uniqueInput = document.createElement('input');
+        uniqueInput.type = 'hidden';
+        uniqueInput.name = 'unique_tasks';
+        uniqueInput.value = '1';
+        tempForm.appendChild(uniqueInput);
+        
+        clientIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'client_ids[]';
+            input.value = id;
+            tempForm.appendChild(input);
         });
-    }
-    
-    /**
-     * Aggiorna il grafico per cliente
-     */
-    function updateClientChart(resourceData) {
-        if (!clientChart || !resourceData.by_client || resourceData.by_client.length === 0) return;
         
-        const labels = resourceData.by_client.map(client => client.name);
-        const estimatedData = resourceData.by_client.map(client => client.estimated_hours);
-        const actualData = resourceData.by_client.map(client => client.actual_hours);
-        const treasureData = resourceData.by_client.map(client => client.treasure_hours);
-        
-        clientChart.data.labels = labels;
-        clientChart.data.datasets[0].data = estimatedData;
-        clientChart.data.datasets[1].data = actualData;
-        clientChart.data.datasets[2].data = treasureData;
-        
-        clientChart.update();
-    }
-    
-    /**
-     * Aggiorna il grafico per progetto
-     */
-    function updateProjectChart(resourceData) {
-        if (!projectChart || !resourceData.by_project || resourceData.by_project.length === 0) return;
-        
-        const labels = resourceData.by_project.map(project => project.name);
-        const estimatedData = resourceData.by_project.map(project => project.estimated_hours);
-        const actualData = resourceData.by_project.map(project => project.actual_hours);
-        const treasureData = resourceData.by_project.map(project => project.treasure_hours);
-        
-        projectChart.data.labels = labels;
-        projectChart.data.datasets[0].data = estimatedData;
-        projectChart.data.datasets[1].data = actualData;
-        projectChart.data.datasets[2].data = treasureData;
-        
-        projectChart.update();
-    }
-    
-    /**
-     * Applica i filtri selezionati
-     */
-    function applyFilters() {
-        const formData = new FormData(document.getElementById('filterForm'));
-        const clientIds = formData.getAll('client_ids[]');
-        const projectIds = formData.getAll('project_ids[]');
-        const resourceIds = formData.getAll('resource_ids[]');
-        
-        // Costruisci i parametri di query
-        const queryParams = new URLSearchParams();
-        
-        if (clientIds.length > 0) {
-            clientIds.forEach(id => queryParams.append('client_ids[]', id));
-        }
-        
-        if (projectIds.length > 0) {
-            projectIds.forEach(id => queryParams.append('project_ids[]', id));
-        }
-        
-        if (resourceIds.length > 0) {
-            resourceIds.forEach(id => queryParams.append('resource_ids[]', id));
-        }
-        
-        // Invia la richiesta AJAX
-        fetch(`/hours/filter?${queryParams.toString()}`, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                resourcesData = data.resourcesData;
-                
-                // Aggiorna la dashboard
-                updateGlobalStats();
-                populateResourcesTable();
-                
-                // Se una risorsa è attualmente selezionata, aggiorna la visualizzazione dettagliata
-                if (currentResourceId) {
-                    const resourceData = resourcesData.find(r => r.id == currentResourceId);
-                    if (resourceData) {
-                        populateClientTable(resourceData);
-                        populateProjectTable(resourceData);
-                        populateActivityTable(resourceData);
-                        updateClientChart(resourceData);
-                        updateProjectChart(resourceData);
-                        
-                        // Se il tab task è attivo, ricarica i dati dei task
-                        if (document.getElementById('task-tab').classList.contains('active')) {
-                            loadTaskDetails();
-                        }
-                    } else {
-                        hideResourceDetail();
-                    }
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Errore durante l\'applicazione dei filtri:', error);
-            alert('Si è verificato un errore durante l\'applicazione dei filtri.');
+        projectIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'project_ids[]';
+            input.value = id;
+            tempForm.appendChild(input);
         });
-    }
-    
-    /**
-     * Resetta i filtri
-     */
-    function resetFilters() {
-        // Resetta i select con Select2
-        $('.select2-multiple').val(null).trigger('change');
         
-        // Applica i filtri resettati
-        applyFilters();
-    }
-    
-    /**
-     * Aggiorna i dati
-     */
-    function refreshData() {
-        window.location.reload();
+        resourceIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'resource_ids[]';
+            input.value = id;
+            tempForm.appendChild(input);
+        });
+        
+        // Aggiungi il form al corpo del documento e invialo
+        document.body.appendChild(tempForm);
+        tempForm.submit();
+        
+        // Rimuovi il form dopo l'invio
+        document.body.removeChild(tempForm);
     }
 });
 </script>

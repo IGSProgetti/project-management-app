@@ -20,87 +20,85 @@
 <body>
     <div class="app-container">
         <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="logo">
-                <h2>IGS Project</h2>
-            </div>
-            <ul class="nav-menu">
-                <li>
-                    <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                        <i class="fas fa-home"></i>
-                        Dashboard
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('resources.index') }}" class="nav-link {{ request()->routeIs('resources.*') ? 'active' : '' }}">
-                        <i class="fas fa-users"></i>
-                        Gestione Risorse
-                    </a>
-                </li>
-                <!-- Elemento da aggiungere al menu di navigazione -->
-<li class="nav-item">
-    <a class="nav-link {{ request()->routeIs('hours.index') ? 'active' : '' }}" href="{{ route('hours.index') }}">
-        <i class="fas fa-clock"></i>
-        <span>Gestione Orario</span>
-    </a>
-</li>
+        <!-- Sidebar -->
+<div class="sidebar">
+    <div class="logo">
+        <h2>IGS Project</h2>
+    </div>
+    <ul class="nav-menu">
+        <li>
+            <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                <i class="fas fa-home"></i>
+                Dashboard
+            </a>
+        </li>
+        
+        @if(auth()->user()->isAdmin())
+            <li>
+                <a href="{{ route('resources.index') }}" class="nav-link {{ request()->routeIs('resources.*') ? 'active' : '' }}">
+                    <i class="fas fa-users"></i>
+                    Gestione Risorse
+                </a>
+            </li>
 
+            <li>
+                <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') && !request()->routeIs('users.profile') ? 'active' : '' }}">
+                    <i class="fas fa-user-cog"></i>
+                    Gestione Utenti
+                </a>
+            </li>
 
-                <li>
-                    <a href="{{ route('clients.index') }}" class="nav-link {{ request()->routeIs('clients.*') ? 'active' : '' }}">
-                        <i class="fas fa-building"></i>
-                        Gestione Clienti
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('projects.index') }}" class="nav-link {{ request()->routeIs('projects.*') ? 'active' : '' }}">
-                        <i class="fas fa-project-diagram"></i>
-                        Gestione Progetti
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('areas.index') }}" class="nav-link {{ request()->routeIs('areas.*') ? 'active' : '' }}">
-                        <i class="fas fa-layer-group"></i>
-                        Gestione Aree
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('activities.index') }}" class="nav-link {{ request()->routeIs('activities.*') ? 'active' : '' }}">
-                        <i class="fas fa-tasks"></i>
-                        Gestione Attività
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('tasks.index') }}" class="nav-link {{ request()->routeIs('tasks.*') ? 'active' : '' }}">
-                        <i class="fas fa-clipboard-list"></i>
-                        Gestione Task
-                    </a>
-                </li>
-                <li>
-<li>
-    <a href="{{ route('calendar.index') }}" class="nav-link {{ request()->routeIs('calendar.*') ? 'active' : '' }}">
-        <i class="fas fa-calendar-alt"></i>
-        Calendario
-    </a>
-</li>
-@if(auth()->check() && auth()->user()->isAdmin())
-<li>
-    <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') && !request()->routeIs('users.profile') ? 'active' : '' }}">
-        <i class="fas fa-user-cog"></i>
-        Gestione Utenti
-    </a>
-</li>
-@endif
-                @if(auth()->check() && auth()->user()->isAdmin())
-                <li>
-                    <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') && !request()->routeIs('users.profile') ? 'active' : '' }}">
-                        <i class="fas fa-user-cog"></i>
-                        Gestione Utenti
-                    </a>
-                </li>
-                @endif
-            </ul>
-        </div>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('hours.index') ? 'active' : '' }}" href="{{ route('hours.index') }}">
+                    <i class="fas fa-clock"></i>
+                    <span>Gestione Orario</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="{{ route('clients.index') }}" class="nav-link {{ request()->routeIs('clients.*') ? 'active' : '' }}">
+                    <i class="fas fa-building"></i>
+                    Gestione Clienti
+                </a>
+            </li>
+            
+            <li>
+                <a href="{{ route('projects.index') }}" class="nav-link {{ request()->routeIs('projects.*') ? 'active' : '' }}">
+                    <i class="fas fa-project-diagram"></i>
+                    Gestione Progetti
+                </a>
+            </li>
+            
+            <li>
+                <a href="{{ route('areas.index') }}" class="nav-link {{ request()->routeIs('areas.*') ? 'active' : '' }}">
+                    <i class="fas fa-layer-group"></i>
+                    Gestione Aree
+                </a>
+            </li>
+        @endif
+        
+        <li>
+            <a href="{{ route('activities.index') }}" class="nav-link {{ request()->routeIs('activities.*') ? 'active' : '' }}">
+                <i class="fas fa-tasks"></i>
+                Gestione Attività
+            </a>
+        </li>
+        
+        <li>
+            <a href="{{ route('tasks.index') }}" class="nav-link {{ request()->routeIs('tasks.*') ? 'active' : '' }}">
+                <i class="fas fa-clipboard-list"></i>
+                Gestione Task
+            </a>
+        </li>
+        
+        <li>
+            <a href="{{ route('calendar.index') }}" class="nav-link {{ request()->routeIs('calendar.*') ? 'active' : '' }}">
+                <i class="fas fa-calendar-alt"></i>
+                Calendario
+            </a>
+        </li>
+    </ul>
+</div>
 
         <!-- Main Content -->
         <div class="main-content">
