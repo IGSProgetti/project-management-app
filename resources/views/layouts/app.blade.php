@@ -55,6 +55,14 @@
                 </a>
             </li>
 
+            <!-- 🆕 NUOVO MENU per Ore Giornaliere -->
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('daily-hours.*') ? 'active' : '' }}" href="{{ route('daily-hours.index') }}">
+                    <i class="fas fa-calendar-day"></i>
+                    <span>Ore Giornaliere</span>
+                </a>
+            </li>
+
             <li>
                 <a href="{{ route('clients.index') }}" class="nav-link {{ request()->routeIs('clients.*') ? 'active' : '' }}">
                     <i class="fas fa-building"></i>
@@ -179,5 +187,6 @@
     </script>
     
     @stack('scripts')
+    @yield('scripts')
 </body>
 </html>

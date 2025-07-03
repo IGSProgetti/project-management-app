@@ -11,6 +11,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ResourceHoursController;
+use App\Http\Controllers\DailyHoursController; // 🆕 NUOVO IMPORT
 use Illuminate\Support\Facades\Auth;
 
 /*
@@ -100,7 +101,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('resource/{resourceId}/tasks', [ResourceHoursController::class, 'getResourceTaskDetails'])->name('resource.tasks');
 });
 
-// Amministrazione utenti (solo per admin)
+// Amministrazione utenti e ore giornaliere (solo per admin)
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('users', UserController::class);
+    
+    // 🆕 NUOVE ROTTE per la gestione delle ore giornaliere
+    Route::get('/daily-hours', [DailyHoursController::class, 'index'])
+          ->name('daily-hours.index');
+    Route::post('/daily-hours/redistribute', [DailyHoursController::class, 'redistributeHours'])
+          ->name('daily-hours.redistribute');
+    Route::get('/daily-hours/projects-by-client', [DailyHoursController::class, 'getProjectsByClient'])
+          ->name('daily-hours.projects-by-client');
+    Route::get('/daily-hours/export', [DailyHoursController::class, 'export'])
+          ->name('daily-hours.export');
+    Route::delete('/daily-hours/redistribution/{id}', [DailyHoursController::class, 'undoRedistribution'])
+          ->name('daily-hours.undo-redistribution');
 });
