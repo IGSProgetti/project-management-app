@@ -20,84 +20,85 @@
 
     <!-- Filtri -->
     <div class="card mb-4">
-    <div class="card-header">
-        <h5>Filtri</h5>
-    </div>
-    <div class="card-body">
-        <form id="filterForm" class="mb-3">
-            <div class="row">
-                <div class="col">
-                    <div class="mb-2">
-                        <label for="filterProjects">Progetti</label>
-                        <select id="filterProjects" class="form-select select2-dropdown" multiple>
-                            @foreach($projects as $project)
-                                <option value="{{ $project->id }}">{{ $project->name }}</option>
-                            @endforeach
-                        </select>
+        <div class="card-header">
+            <h5>Filtri</h5>
+        </div>
+        <div class="card-body">
+            <form id="filterForm" class="mb-3">
+                <div class="row">
+                    <div class="col">
+                        <div class="mb-2">
+                            <label for="filterProjects">Progetti</label>
+                            <select id="filterProjects" class="form-select select2-dropdown" multiple>
+                                @foreach($projects as $project)
+                                    <option value="{{ $project->id }}">{{ $project->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
-                </div>
-                <div class="col">
-                    <div class="mb-2">
-                        <label for="filterClients">Clienti</label>
-                        <select id="filterClients" class="form-select select2-dropdown" multiple>
-                            @foreach($clients as $client)
-                                <option value="{{ $client->id }}">{{ $client->name }}</option>
-                            @endforeach
-                        </select>
+                    <div class="col">
+                        <div class="mb-2">
+                            <label for="filterClients">Clienti</label>
+                            <select id="filterClients" class="form-select select2-dropdown" multiple>
+                                @foreach($clients as $client)
+                                    <option value="{{ $client->id }}">{{ $client->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
-                </div>
-                <div class="col">
-                    <div class="mb-2">
-                        <label for="filterActivities">Attività</label>
-                        <select id="filterActivities" class="form-select select2-dropdown" multiple>
-                            @foreach($activities ?? [] as $activity)
-                                <option value="{{ $activity->id }}">{{ $activity->name }}</option>
-                            @endforeach
-                        </select>
+                    <div class="col">
+                        <div class="mb-2">
+                            <label for="filterActivities">Attività</label>
+                            <select id="filterActivities" class="form-select select2-dropdown" multiple>
+                                @foreach($activities ?? [] as $activity)
+                                    <option value="{{ $activity->id }}">{{ $activity->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
-                </div>
-                <div class="col">
-                    <div class="mb-2">
-                        <label for="filterResources">Risorse</label>
-                        <select id="filterResources" class="form-select select2-dropdown" multiple>
-                            @foreach($resources as $resource)
-                                <option value="{{ $resource->id }}">{{ $resource->name }}</option>
-                            @endforeach
-                        </select>
+                    <div class="col">
+                        <div class="mb-2">
+                            <label for="filterResources">Risorse</label>
+                            <select id="filterResources" class="form-select select2-dropdown" multiple>
+                                @foreach($resources as $resource)
+                                    <option value="{{ $resource->id }}">{{ $resource->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
-                </div>
-                <div class="col">
-                    <div class="mb-2">
-                        <label for="filterName">Nome Task</label>
-                        <input type="text" id="filterName" class="form-control" placeholder="Cerca...">
+                    <div class="col">
+                        <div class="mb-2">
+                            <label for="filterName">Nome Task</label>
+                            <input type="text" id="filterName" class="form-control" placeholder="Filtra per nome task...">
+                        </div>
                     </div>
-                </div>
-                <div class="col-auto">
-                    <div class="mb-2 d-flex align-items-end h-100">
-                        <div class="btn-group">
-                            <button type="button" id="applyFiltersBtn" class="btn btn-primary">
-                                <i class="fas fa-filter"></i> Filtra
-                            </button>
-                            <button type="button" id="resetFiltersBtn" class="btn btn-secondary">
-                                <i class="fas fa-sync"></i> Reset
-                            </button>
+                    <div class="col-auto">
+                        <div class="mb-2">
+                            <label>&nbsp;</label>
+                            <div class="btn-group d-block">
+                                <button type="button" id="applyFiltersBtn" class="btn btn-primary">
+                                    <i class="fas fa-filter"></i> Applica
+                                </button>
+                                <button type="button" id="resetFiltersBtn" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> Reset
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
-</div>
 
-    <!-- Statistiche riassuntive -->
+    <!-- Dashboard con statistiche -->
     <div class="card mb-4">
         <div class="card-header">
-            <h5>Dashboard Riassuntiva</h5>
+            <h5>Statistiche Generali</h5>
         </div>
         <div class="card-body">
             <div class="row">
                 <div class="col-md-3">
-                    <div class="card bg-light h-100">
+                    <div class="card bg-light h-100 dashboard-card">
                         <div class="card-body text-center">
                             <h6 class="card-title">Minuti Stimati</h6>
                             <h3 id="totalEstimatedMinutes">{{ $totalStats['estimatedMinutes'] }}</h3>
@@ -106,7 +107,7 @@
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card bg-light h-100">
+                    <div class="card bg-light h-100 dashboard-card">
                         <div class="card-body text-center">
                             <h6 class="card-title">Minuti Effettivi</h6>
                             <h3 id="totalActualMinutes">{{ $totalStats['actualMinutes'] }}</h3>
@@ -115,7 +116,7 @@
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card bg-light h-100">
+                    <div class="card bg-light h-100 dashboard-card">
                         <div class="card-body text-center">
                             <h6 class="card-title">Consuntivo</h6>
                             <h3 id="totalBalance" class="{{ $totalStats['balance'] >= 0 ? 'text-success' : 'text-danger' }}">
@@ -126,11 +127,11 @@
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card bg-light h-100">
+                    <div class="card bg-light h-100 dashboard-card">
                         <div class="card-body text-center">
                             <h6 class="card-title">Bonus Totale</h6>
                             <h3 id="totalBonus" class="text-success">{{ number_format($totalStats['bonus'], 2) }} €</h3>
-                            <p class="text-muted">5% sulle ore effettive</p>
+                            <p class="text-muted">5% sulle ore effettive (tariffa progetto)</p>
                         </div>
                     </div>
                 </div>
@@ -164,23 +165,25 @@
                                 @php
                                     $balance = $task->estimated_minutes - $task->actual_minutes;
                                     
-                                    // Inizializza la tariffa oraria a zero
+                                    // Calcola la tariffa oraria del progetto utilizzando il sistema a step
                                     $hourlyRate = 0;
                                     
                                     // Verifica le condizioni base
-                                    if ($task->activity && $task->activity->resource) {
-                                        // Determina quale tariffa usare in base al tipo di ore
-                                        if ($task->activity->hours_type == 'standard') {
-                                            // Usa tariffa standard
-                                            $hourlyRate = $task->activity->resource->selling_price;
+                                    if ($task->activity && $task->activity->project && $task->activity->resource) {
+                                        $project = $task->activity->project;
+                                        $resource = $task->activity->resource;
+                                        $hoursType = $task->activity->hours_type;
+                                        
+                                        // Determina la tariffa base della risorsa
+                                        $baseRate = 0;
+                                        if ($hoursType == 'standard') {
+                                            $baseRate = $resource->selling_price;
                                         } else {
-                                            // Usa tariffa extra se disponibile, altrimenti standard
-                                            if (!empty($task->activity->resource->extra_selling_price)) {
-                                                $hourlyRate = $task->activity->resource->extra_selling_price;
-                                            } else {
-                                                $hourlyRate = $task->activity->resource->selling_price;
-                                            }
+                                            $baseRate = $resource->extra_selling_price ?: ($resource->selling_price * 1.2);
                                         }
+                                        
+                                        // Calcola la tariffa oraria del progetto utilizzando il sistema a step
+                                        $hourlyRate = $project->calculateAdjustedRate($baseRate);
                                     }
                                     
                                     // Calcolo del bonus
@@ -197,41 +200,29 @@
                                     data-task-name="{{ strtolower($task->name) }}"
                                 >
                                     <td>{{ $task->name }}</td>
-                                    <td>{{ $task->activity && $task->activity->project && $task->activity->project->client ? $task->activity->project->client->name : 'N/D' }}</td>
-                                    <td>{{ $task->activity ? $task->activity->name : 'N/D' }}</td>
-                                    <td>{{ $task->activity && $task->activity->project ? $task->activity->project->name : 'N/D' }}</td>
-                                    <td>{{ $task->activity && $task->activity->resource ? $task->activity->resource->name : 'N/D' }}</td>
+                                    <td>{{ $task->activity && $task->activity->project && $task->activity->project->client ? $task->activity->project->client->name : 'N/A' }}</td>
+                                    <td>{{ $task->activity ? $task->activity->name : 'N/A' }}</td>
+                                    <td>{{ $task->activity && $task->activity->project ? $task->activity->project->name : 'N/A' }}</td>
+                                    <td>{{ $task->activity && $task->activity->resource ? $task->activity->resource->name : 'N/A' }}</td>
                                     <td>
-                                        @if($task->status == 'pending')
-                                            <span class="badge bg-warning">In attesa</span>
-                                        @elseif($task->status == 'in_progress')
-                                            <span class="badge bg-primary">In corso</span>
-                                        @elseif($task->status == 'completed')
-                                            <span class="badge bg-success">Completato</span>
-                                        @endif
+                                        <span class="badge bg-{{ 
+                                            $task->status == 'completed' ? 'success' : 
+                                            ($task->status == 'in_progress' ? 'warning' : 'secondary') 
+                                        }}">
+                                            {{ ucfirst($task->status) }}
+                                        </span>
                                     </td>
                                     <td>{{ $task->estimated_minutes }}</td>
                                     <td>{{ $task->actual_minutes }}</td>
                                     <td class="{{ $balance >= 0 ? 'text-success' : 'text-danger' }}">{{ $balance }}</td>
-                                    <td class="{{ $bonus > 0 ? 'text-success' : 'text-danger' }}">
-                                        {{ number_format($bonus, 2) }} €
-                                    </td>
+                                    <td class="text-success">{{ number_format($bonus, 2) }} €</td>
                                     <td>
-                                        <div class="btn-group" role="group">
-                                            <a href="{{ route('tasks.show', $task->id) }}" class="btn btn-sm btn-info">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{{ route('tasks.edit', $task->id) }}" class="btn btn-sm btn-warning">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Sei sicuro di voler eliminare questo task?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-danger">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
+                                        <a href="{{ route('tasks.show', $task->id) }}" class="btn btn-sm btn-outline-primary" title="Visualizza">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ route('tasks.edit', $task->id) }}" class="btn btn-sm btn-outline-warning" title="Modifica">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
                                     </td>
                                 </tr>
                             @endforeach
@@ -239,14 +230,18 @@
                     </table>
                 </div>
             @else
-                <div class="alert alert-info">
-                    Nessun task disponibile. <a href="{{ route('tasks.create') }}">Crea il tuo primo task</a>.
+                <div class="alert alert-info text-center">
+                    <h4>Nessun task trovato</h4>
+                    <p>Non ci sono task da visualizzare al momento.</p>
+                    <a href="{{ route('tasks.create') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Crea il primo task
+                    </a>
                 </div>
             @endif
         </div>
     </div>
 
-    <!-- Grafici - spostati dopo la tabella dei task -->
+    <!-- Grafici -->
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="card">
@@ -278,40 +273,41 @@
 <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 
 <style>
-    .card-body .card {
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-    
-    .card-body .card h3 {
-        font-size: 2rem;
-        font-weight: 600;
-    }
-    
-    .table thead th {
-        background-color: #f8f9fa;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-    
-    .text-success {
-        font-weight: 600;
-    }
-    
-    .text-danger {
-        font-weight: 600;
-    }
-    
-    .dashboard-card {
-        transition: all 0.3s ease;
-    }
-    
-    .dashboard-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-   /* Stili per filtri con selezione multipla in linea */
+/* Stili per le card dashboard */
+.card-body .card {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.card-body .card h3 {
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.text-success {
+    font-weight: 600;
+}
+
+.text-danger {
+    font-weight: 600;
+}
+
+.dashboard-card {
+    transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Stili per filtri con selezione multipla */
 .card-body {
     padding: 1rem;
 }
@@ -397,44 +393,6 @@
     margin-top: auto;
 }
 
-/* Responsive - quando lo schermo diventa piccolo, i filtri andranno a capo */
-@media (max-width: 1200px) {
-    .row .col, .row .col-auto {
-        width: 50%;
-        margin-bottom: 10px;
-    }
-}
-
-@media (max-width: 768px) {
-    .row .col, .row .col-auto {
-        width: 100%;
-    }
-}
-
-/* Stili per la dashboard e le card del filtro */
-.card-body .card {
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-}
-
-.card-body .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.card-body .card h3 {
-    font-size: 2rem;
-    font-weight: 600;
-}
-
-/* Stili per i risultati filtrati */
-.table thead th {
-    background-color: #f8f9fa;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
 /* Per mostrare chiaramente quando un filtro è attivo */
 .select2-container--bootstrap-5.select2-container--focus .select2-selection,
 .select2-container--bootstrap-5.select2-container--open .select2-selection {
@@ -457,6 +415,32 @@
     font-size: 0.875rem;
 }
 
+/* Responsive */
+@media (max-width: 1200px) {
+    .row .col, .row .col-auto {
+        width: 50%;
+        margin-bottom: 10px;
+    }
+}
+
+@media (max-width: 768px) {
+    .row .col, .row .col-auto {
+        width: 100%;
+    }
+    
+    #tasksTable {
+        font-size: 0.8rem;
+    }
+    
+    #tasksTable th,
+    #tasksTable td {
+        padding: 0.3rem;
+    }
+    
+    .btn-sm {
+        padding: 0.2rem 0.4rem;
+    }
+}
 </style>
 @endpush
 
@@ -493,151 +477,27 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectedProjectIds = $(this).val();
         console.log("Progetti selezionati:", selectedProjectIds);
         
-        // Reset del filtro attività se non ci sono progetti selezionati
-        if (!selectedProjectIds || selectedProjectIds.length === 0) {
-            console.log("Nessun progetto selezionato, carico tutte le attività");
-            loadAllActivities();
-            return;
-        }
+        // Reset delle attività
+        filterActivities.empty();
+        filterActivities.append('<option></option>'); // Opzione vuota per placeholder
         
-        // Carica attività per i progetti selezionati
-        loadActivitiesForProjects(selectedProjectIds);
-    });
-    
-    // Funzione per caricare tutte le attività
-    function loadAllActivities() {
-        console.log("Caricamento di tutte le attività...");
-        // Mostra un indicatore di caricamento
-        filterActivities.empty().append(new Option('Caricamento attività...', ''));
-        filterActivities.prop('disabled', true);
-        
-        fetch('/api/activities')
-            .then(response => {
-                console.log("Risposta ricevuta:", response.status);
-                if (!response.ok) {
-                    throw new Error(`Errore HTTP ${response.status}`);
+        // Se non ci sono progetti selezionati, mostra tutte le attività
+        if (selectedProjectIds.length === 0) {
+            @foreach($activities ?? [] as $activity)
+                filterActivities.append(new Option("{{ $activity->name }}", "{{ $activity->id }}"));
+            @endforeach
+        } else {
+            // Mostra solo le attività dei progetti selezionati
+            @foreach($activities ?? [] as $activity)
+                if (selectedProjectIds.includes("{{ $activity->project_id }}")) {
+                    filterActivities.append(new Option("{{ $activity->name }}", "{{ $activity->id }}"));
                 }
-                return response.json();
-            })
-            .then(data => {
-                console.log("Dati attività ricevuti:", data);
-                if (data.success) {
-                    updateActivitiesDropdown(data.activities);
-                } else {
-                    console.error("La risposta non contiene 'success: true'");
-                    updateActivitiesDropdown([]);
-                }
-            })
-            .catch(error => {
-                console.error('Errore nel caricamento delle attività:', error);
-                updateActivitiesDropdown([]);
-            })
-            .finally(() => {
-                // Riabilita il dropdown
-                filterActivities.prop('disabled', false);
-            });
-    }
-    
-    // Funzione per caricare le attività dei progetti selezionati
-    function loadActivitiesForProjects(projectIds) {
-        console.log("Caricamento attività per progetti:", projectIds);
-        // Mantieni le attività selezionate correntemente
-        const selectedActivityIds = filterActivities.val() || [];
-        
-        // Mostra un indicatore di caricamento nel dropdown
-        filterActivities.empty().append(new Option('Caricamento attività...', ''));
-        filterActivities.prop('disabled', true);
-        
-        // Processa ogni progetto separatamente e poi combina i risultati
-        const promises = projectIds.map(projectId =>
-            fetch(`/api/activities/by-project/${projectId}`)
-                .then(response => {
-                    console.log(`Risposta per il progetto ${projectId}:`, response.status);
-                    if (!response.ok) {
-                        throw new Error(`Errore HTTP ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log(`Dati attività per il progetto ${projectId}:`, data);
-                    if (data.success) {
-                        return data.activities;
-                    }
-                    return [];
-                })
-                .catch(error => {
-                    console.error(`Errore nel caricamento delle attività per il progetto ${projectId}:`, error);
-                    return [];
-                })
-        );
-        
-        // Combina tutti i risultati quando tutte le richieste sono completate
-        Promise.all(promises)
-            .then(activitiesArrays => {
-                // Unisci tutti gli array di attività
-                const uniqueActivitiesMap = {};
-                activitiesArrays.flat().forEach(activity => {
-                    uniqueActivitiesMap[activity.id] = activity;
-                });
-                
-                const uniqueActivities = Object.values(uniqueActivitiesMap);
-                console.log("Attività uniche:", uniqueActivities.length);
-                
-                // Aggiorna il dropdown delle attività mantenendo le selezioni
-                updateActivitiesDropdown(uniqueActivities, selectedActivityIds);
-            })
-            .finally(() => {
-                // Riabilita il dropdown
-                filterActivities.prop('disabled', false);
-            });
-    }
-    
-    // Funzione per aggiornare il dropdown delle attività
-    function updateActivitiesDropdown(activities, selectedIds = []) {
-        console.log("Aggiornamento dropdown attività con", activities ? activities.length : 0, "attività");
-        
-        // Se non sono stati forniti selectedIds, prendi le attuali selezioni
-        if (!selectedIds || selectedIds.length === 0) {
-            selectedIds = filterActivities.val() || [];
+            @endforeach
         }
-        
-        // Svuota il dropdown e aggiungi l'opzione predefinita
-        filterActivities.empty().append(new Option('Tutte le attività', ''));
-        
-        // Controlla se abbiamo attività da aggiungere
-        if (!activities || activities.length === 0) {
-            console.log("Nessuna attività da aggiungere al dropdown");
-            filterActivities.trigger('change');
-            return;
-        }
-        
-        console.log("Aggiunta di", activities.length, "attività al dropdown");
-        
-        // Ordina le attività per nome per una migliore usabilità
-        activities.sort((a, b) => a.name.localeCompare(b.name));
-        
-        // Riempilo con le nuove attività
-        activities.forEach(activity => {
-            // Assicurati che activity.id sia una stringa quando fai il confronto
-            const activityId = String(activity.id);
-            const isSelected = selectedIds.includes(activityId);
-            
-            console.log(`Aggiunta attività: ${activity.name} (id: ${activityId}), selezionata: ${isSelected}`);
-            
-            // Crea una nuova opzione
-            const option = new Option(
-                activity.name, 
-                activityId, 
-                false,  // non selezionata per default
-                isSelected  // selezionata se era nella lista precedente
-            );
-            
-            filterActivities.append(option);
-        });
         
         // Aggiorna Select2
         filterActivities.trigger('change');
-    }
+    });
     
     // Applica filtri
     function applyFilters() {
@@ -720,7 +580,21 @@ document.addEventListener('DOMContentLoaded', function() {
         applyFilters();
     }
     
+    // Event listeners
+    applyFiltersBtn.addEventListener('click', applyFilters);
+    resetFiltersBtn.addEventListener('click', resetFilters);
+    filterName.addEventListener('input', applyFilters);
+    
+    // Event listeners per Select2
+    filterProjects.on('change', applyFilters);
+    filterClients.on('change', applyFilters);
+    filterActivities.on('change', applyFilters);
+    filterResources.on('change', applyFilters);
+    
     // Grafici
+    let resourceEfficiencyChart = null;
+    let bonusDistributionChart = null;
+    
     function updateCharts() {
         // Raccogli dati per i grafici
         const resources = {};
@@ -729,7 +603,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const visibleRows = Array.from(table.querySelectorAll('tbody tr')).filter(row => row.style.display !== 'none');
         
         visibleRows.forEach(row => {
-            const resourceName = row.cells[4].textContent; // Colonna Risorsa (quinta colonna)
+            const resourceName = row.cells[4].textContent; // Colonna Risorsa
             const estimatedMinutes = parseInt(row.cells[6].textContent) || 0;
             const actualMinutes = parseInt(row.cells[7].textContent) || 0;
             const bonus = parseFloat(row.cells[9].textContent.replace('€', '').trim()) || 0;
@@ -745,150 +619,101 @@ document.addEventListener('DOMContentLoaded', function() {
             resources[resourceName].estimatedMinutes += estimatedMinutes;
             resources[resourceName].actualMinutes += actualMinutes;
             
-            // Aggregazione per bonus
-            if (bonus > 0) {
-                if (!bonusData[resourceName]) {
-                    bonusData[resourceName] = 0;
-                }
-                bonusData[resourceName] += bonus;
+            // Aggregazione bonus
+            if (!bonusData[resourceName]) {
+                bonusData[resourceName] = 0;
             }
+            bonusData[resourceName] += bonus;
         });
         
-        // Aggiorna grafico efficienza
-        updateEfficiencyChart(resources);
-        
-        // Aggiorna grafico bonus
-        updateBonusChart(bonusData);
-    }
-    
-    function updateEfficiencyChart(resourcesData) {
-        const ctx = document.getElementById('resourceEfficiencyChart').getContext('2d');
+        // Grafico efficienza per risorsa
+        const resourceNames = Object.keys(resources);
+        const efficiencyData = resourceNames.map(name => {
+            const data = resources[name];
+            return data.estimatedMinutes > 0 ? (data.actualMinutes / data.estimatedMinutes) * 100 : 0;
+        });
         
         // Distruggi il grafico esistente se presente
-        if (window.efficiencyChart) {
-            window.efficiencyChart.destroy();
+        if (resourceEfficiencyChart) {
+            resourceEfficiencyChart.destroy();
         }
         
-        // Prepara i dati
-        const labels = Object.keys(resourcesData);
-        const estimatedData = labels.map(label => resourcesData[label].estimatedMinutes);
-        const actualData = labels.map(label => resourcesData[label].actualMinutes);
-        
-        // Crea il nuovo grafico
-        window.efficiencyChart = new Chart(ctx, {
+        const ctx1 = document.getElementById('resourceEfficiencyChart').getContext('2d');
+        resourceEfficiencyChart = new Chart(ctx1, {
             type: 'bar',
             data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Minuti Stimati',
-                        data: estimatedData,
-                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Minuti Effettivi',
-                        data: actualData,
-                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        borderWidth: 1
-                    }
-                ]
+                labels: resourceNames,
+                datasets: [{
+                    label: 'Efficienza (%)',
+                    data: efficiencyData,
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    }
-    
-    function updateBonusChart(bonusData) {
-        const ctx = document.getElementById('bonusDistributionChart').getContext('2d');
-        
-        // Distruggi il grafico esistente se presente
-        if (window.bonusChart) {
-            window.bonusChart.destroy();
-        }
-        
-        // Prepara i dati
-        const labels = Object.keys(bonusData);
-        const bonusValues = labels.map(label => bonusData[label]);
-        
-        // Crea colori consistenti ma diversi per ogni risorsa
-        const backgroundColors = labels.map((label, index) => {
-            // Genera colori in modo deterministico basandosi sul nome
-            const hue = (index * 137.5) % 360; // Distribuzione uniforme di colori
-            return `hsla(${hue}, 70%, 60%, 0.7)`;
-        });
-        
-        // Crea il nuovo grafico
-        window.bonusChart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        data: bonusValues,
-                        backgroundColor: backgroundColors,
-                        hoverOffset: 4
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'right'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.label}: ${context.raw.toFixed(2)} €`;
-                            }
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Efficienza (%)'
                         }
                     }
                 }
             }
         });
-    }
-    
-    // Event listeners
-    if (applyFiltersBtn) {
-        applyFiltersBtn.addEventListener('click', applyFilters);
-    }
-    
-    if (resetFiltersBtn) {
-        resetFiltersBtn.addEventListener('click', resetFilters);
-    }
-    
-    // Event listener per il cambio delle selezioni in Select2
-    $('.select2-dropdown').on('select2:select select2:unselect', function (e) {
-        // Aggiungi una classe per mostrare visivamente che un filtro è attivo
-        if ($(this).val() && $(this).val().length > 0) {
-            $(this).next('.select2-container').addClass('has-selection');
-        } else {
-            $(this).next('.select2-container').removeClass('has-selection');
+        
+        // Grafico distribuzione bonus
+        const bonusNames = Object.keys(bonusData);
+        const bonusValues = Object.values(bonusData);
+        
+        // Distruggi il grafico esistente se presente
+        if (bonusDistributionChart) {
+            bonusDistributionChart.destroy();
         }
-    });
+        
+        const ctx2 = document.getElementById('bonusDistributionChart').getContext('2d');
+        bonusDistributionChart = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: bonusNames,
+                datasets: [{
+                    label: 'Bonus (€)',
+                    data: bonusValues,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 205, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 205, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
     
-    // Applica i filtri anche quando si digita nel campo di ricerca (dopo un breve ritardo)
-    let searchTimeout;
-    $('#filterName').on('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(applyFilters, 300);
-    });
-    
-    // Inizializza i grafici
+    // Inizializza i grafici al caricamento della pagina
     updateCharts();
     
-    // Carica le attività all'avvio della pagina
-    console.log("Caricamento iniziale delle attività...");
-    loadAllActivities();
+    // Applica filtri iniziali
+    applyFilters();
 });
 </script>
 @endpush

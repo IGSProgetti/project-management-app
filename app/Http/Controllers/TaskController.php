@@ -786,23 +786,31 @@ public function update(Request $request, string $id)
     }
     
     /**
-     * Ottiene la tariffa oraria per la risorsa assegnata al task.
-     */
-    private function getResourceHourlyRate($task)
-    {
-        if (!$task->activity || !$task->activity->resource) {
-            return 0;
-        }
+ * Ottiene la tariffa oraria per il progetto utilizzando il sistema di calcolo a step.
+ */
+private function getResourceHourlyRate($task)
+{
+    if (!$task->activity || !$task->activity->project) {
+        return 0;
+    }
 
-        $resource = $task->activity->resource;
-        $hoursType = $task->activity->hours_type;
+    $project = $task->activity->project;
+    $resource = $task->activity->resource;
+    $hoursType = $task->activity->hours_type;
 
+    // Determina la tariffa base della risorsa
+    $baseRate = 0;
+    if ($resource) {
         if ($hoursType == 'standard') {
-            return $resource->selling_price;
+            $baseRate = $resource->selling_price;
         } else {
-            return $resource->extra_selling_price ?: ($resource->selling_price * 1.2);
+            $baseRate = $resource->extra_selling_price ?: ($resource->selling_price * 1.2);
         }
     }
+
+    // Calcola la tariffa oraria del progetto utilizzando il sistema a step
+    return $project->calculateAdjustedRate($baseRate);
+}
     
     /**
      * Esporta i dati dei task per report.
