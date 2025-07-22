@@ -1,5 +1,7 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -16,13 +18,17 @@ class Project extends Model
         'start_date',
         'end_date',
         'status',
-        'default_hours_type'
+        'default_hours_type',
+        'created_from_tasks',
+        'tasks_created_at'
     ];
 
     protected $casts = [
         'cost_steps' => 'array',
         'start_date' => 'date',
         'end_date' => 'date',
+        'created_from_tasks' => 'boolean',
+        'tasks_created_at' => 'datetime',
     ];
 
     public function client()
@@ -49,9 +55,6 @@ class Project extends Model
 
     /**
      * Calcola la tariffa oraria aggiustata in base agli step di costo abilitati.
-     *
-     * @param float $baseRate La tariffa oraria di base
-     * @return float La tariffa oraria aggiustata
      */
     public function calculateAdjustedRate($baseRate)
     {
@@ -66,7 +69,6 @@ class Project extends Model
             8 => 14 // Network IGS
         ];
         
-        // Calcola la percentuale totale di deduzione
         $totalDeduction = 0;
         foreach ($stepValues as $step => $percentage) {
             if (!in_array($step, $this->cost_steps ?: [1,2,3,4,5,6,7,8])) {
@@ -163,111 +165,49 @@ class Project extends Model
     }
 
     /**
-     * Ottiene l'utilizzo percentuale di ore standard per risorsa
+     * Scope per progetti creati da tasks
      */
-    public function getStandardHoursUtilizationAttribute()
+    public function scopeCreatedFromTasks($query)
     {
-        $result = [];
-        $resourceHours = [];
-        
-        // Ottieni le ore pianificate per risorsa
-        $this->resources()
-            ->wherePivot('hours_type', 'standard')
-            ->get()
-            ->each(function ($resource) use (&$resourceHours) {
-                $resourceHours[$resource->id] = [
-                    'planned' => $resource->pivot->hours,
-                    'actual' => 0
-                ];
-            });
-        
-        // Aggiungi le ore effettive dalle attività
-        $standardHoursUsed = $this->standard_actual_hours_by_resource;
-        foreach ($standardHoursUsed as $resourceId => $hours) {
-            if (isset($resourceHours[$resourceId])) {
-                $resourceHours[$resourceId]['actual'] = $hours;
-            }
-        }
-        
-        // Calcola la percentuale di utilizzo
-        foreach ($resourceHours as $resourceId => $hours) {
-            $planned = $hours['planned'] ?: 0.01; // Evita divisione per zero
-            $result[$resourceId] = min(100, round(($hours['actual'] / $planned) * 100));
-        }
-        
-        return $result;
+        return $query->where('created_from_tasks', true);
     }
 
     /**
-     * Ottiene l'utilizzo percentuale di ore extra per risorsa
+     * Scope per progetti creati normalmente
      */
-    public function getExtraHoursUtilizationAttribute()
+    public function scopeCreatedNormally($query)
     {
-        $result = [];
-        $resourceHours = [];
-        
-        // Ottieni le ore pianificate per risorsa
-        $this->resources()
-            ->wherePivot('hours_type', 'extra')
-            ->get()
-            ->each(function ($resource) use (&$resourceHours) {
-                $resourceHours[$resource->id] = [
-                    'planned' => $resource->pivot->hours,
-                    'actual' => 0
-                ];
-            });
-        
-        // Aggiungi le ore effettive dalle attività
-        $extraHoursUsed = $this->extra_actual_hours_by_resource;
-        foreach ($extraHoursUsed as $resourceId => $hours) {
-            if (isset($resourceHours[$resourceId])) {
-                $resourceHours[$resourceId]['actual'] = $hours;
-            }
-        }
-        
-        // Calcola la percentuale di utilizzo
-        foreach ($resourceHours as $resourceId => $hours) {
-            $planned = $hours['planned'] ?: 0.01; // Evita divisione per zero
-            $result[$resourceId] = min(100, round(($hours['actual'] / $planned) * 100));
-        }
-        
-        return $result;
+        return $query->where('created_from_tasks', false);
     }
 
     /**
-     * Verifica se il progetto è sopra budget
+     * Crea un progetto "al volo" per i tasks
      */
-    public function getIsOverBudgetAttribute()
+    public static function createFromTasks($name, $clientId, $description = null)
     {
-        $totalActualCost = $this->activities->sum('actual_cost');
-        return $totalActualCost > $this->total_cost;
+        return self::create([
+            'name' => $name,
+            'description' => $description ?? 'Progetto creato automaticamente dalla gestione tasks. Da verificare e completare.',
+            'client_id' => $clientId,
+            'cost_steps' => [1,2,3,4,5,6,7,8], // Step di costo standard
+            'total_cost' => 0,
+            'status' => 'pending',
+            'default_hours_type' => 'standard',
+            'created_from_tasks' => true,
+            'tasks_created_at' => now(),
+        ]);
     }
 
     /**
-     * Ottiene il budget utilizzato
+     * Consolida un progetto creato da tasks
      */
-    public function getBudgetUsedAttribute()
+    public function consolidate($data = [])
     {
-        return $this->activities->sum('actual_cost');
-    }
-
-    /**
-     * Ottiene la percentuale di budget utilizzato
-     */
-    public function getBudgetUsedPercentageAttribute()
-    {
-        if ($this->total_cost <= 0) {
-            return 0;
-        }
+        $updateData = array_merge($data, [
+            'created_from_tasks' => false,
+            'tasks_created_at' => null,
+        ]);
         
-        return min(100, round(($this->budget_used / $this->total_cost) * 100));
-    }
-
-    /**
-     * Ottiene il budget rimanente
-     */
-    public function getRemainingBudgetAttribute()
-    {
-        return max(0, $this->total_cost - $this->budget_used);
+        $this->update($updateData);
     }
 }

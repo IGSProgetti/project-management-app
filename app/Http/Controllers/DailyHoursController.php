@@ -12,6 +12,7 @@ use App\Models\HoursRedistribution;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DailyHoursController extends Controller
 {
@@ -37,11 +38,11 @@ class DailyHoursController extends Controller
             return $query->where('client_id', $selectedClient);
         })->get();
         
-        // 🆕 NUOVO: Ottieni i dati dei budget clienti con redistribuzioni
+        // Ottieni i dati dei budget clienti con redistribuzioni
         $clientsBudgetData = $this->getClientsBudgetData($selectedDate);
         
-        // Ottieni i dati delle ore giornaliere
-        $dailyHoursData = $this->getDailyHoursData($selectedDate, $selectedClient, $selectedProject);
+        // 🆕 NUOVO: Ottieni i dati delle ore giornaliere con gestione unificata
+        $dailyHoursData = $this->getDailyHoursDataUnified($selectedDate, $selectedClient, $selectedProject);
         
         // Ottieni le redistribuzioni esistenti per questa data
         $redistributions = HoursRedistribution::forDate($selectedDate)
@@ -56,12 +57,211 @@ class DailyHoursController extends Controller
             'selectedClient',
             'selectedProject',
             'redistributions',
-            'clientsBudgetData' // 🆕 NUOVO: Passa i dati budget alla vista
+            'clientsBudgetData'
         ));
     }
     
     /**
-     * 🆕 NUOVO: Ottieni i dati budget e redistribuzioni per ogni cliente
+     * 🆕 NUOVO: Ottieni i dati delle ore giornaliere con gestione unificata standard + extra
+     */
+    private function getDailyHoursDataUnified($date, $clientId = null, $projectId = null)
+    {
+        $resources = Resource::where('is_active', true)->get();
+        $dailyData = [];
+        
+        foreach ($resources as $resource) {
+            // 🆕 CALCOLO CAPACITÀ UNIFICATA
+            $standardDailyCapacity = $resource->working_hours_day ?? 5; // Default 5 ore standard
+            $extraDailyCapacity = $resource->extra_hours_day ?? 3; // Default 3 ore extra
+            $unifiedCapacity = $standardDailyCapacity + $extraDailyCapacity;
+            
+            // 🆕 TARIFFE DIFFERENZIATE
+            $standardHourlyRate = $resource->selling_price ?? 50;
+            $extraHourlyRate = $resource->extra_selling_price ?? ($standardHourlyRate * 1.2);
+            
+            $resourceData = [
+                'id' => $resource->id,
+                'name' => $resource->name,
+                'role' => $resource->role,
+                
+                // 🆕 CAPACITÀ UNIFICATA
+                'standard_daily_capacity' => $standardDailyCapacity,
+                'extra_daily_capacity' => $extraDailyCapacity,
+                'unified_capacity' => $unifiedCapacity,
+                'daily_hours_capacity' => $unifiedCapacity, // Per compatibilità con vista esistente
+                
+                // 🆕 TARIFFE
+                'standard_hourly_rate' => $standardHourlyRate,
+                'extra_hourly_rate' => $extraHourlyRate,
+                'hourly_rate' => $standardHourlyRate, // Per compatibilità
+                
+                // Dati attività
+                'clients' => [],
+                'total_hours_worked' => 0,
+                'total_standard_hours_worked' => 0,
+                'total_extra_hours_worked' => 0,
+                
+                // 🆕 ORE RIMANENTI UNIFICATE
+                'remaining_standard_hours' => $standardDailyCapacity,
+                'remaining_extra_hours' => $extraDailyCapacity,
+                'unified_remaining_hours' => $unifiedCapacity,
+                'remaining_hours' => $unifiedCapacity, // Per compatibilità
+                'remaining_value' => 0
+            ];
+            
+            // Ottieni le attività per questa risorsa
+            $activitiesQuery = Activity::where(function($query) use ($resource) {
+                $query->where('resource_id', $resource->id)
+                      ->orWhereHas('resources', function($q) use ($resource) {
+                          $q->where('resources.id', $resource->id);
+                      });
+            });
+            
+            // Applica filtri se specificati
+            if ($clientId) {
+                $activitiesQuery->whereHas('project', function($query) use ($clientId) {
+                    $query->where('client_id', $clientId);
+                });
+            }
+            
+            if ($projectId) {
+                $activitiesQuery->where('project_id', $projectId);
+            }
+            
+            $activities = $activitiesQuery->with(['project.client', 'tasks'])->get();
+            
+            // Raggruppa dati per cliente
+            $clientsData = [];
+            $totalStandardWorked = 0;
+            $totalExtraWorked = 0;
+            
+            foreach ($activities as $activity) {
+                $client = $activity->project->client;
+                $project = $activity->project;
+                
+                // Calcola ore lavorate in questa data specifica
+                $tasksForDay = $activity->tasks()
+                    ->whereDate('updated_at', $date)
+                    ->where('actual_minutes', '>', 0)
+                    ->get();
+                
+                $activityStandardHours = 0;
+                $activityExtraHours = 0;
+                $activityTotalHours = 0;
+                $activityTasks = [];
+                
+                foreach ($tasksForDay as $task) {
+                    $taskHours = $task->actual_minutes / 60;
+                    $activityTotalHours += $taskHours;
+                    
+                    // 🆕 DETERMINA SE SONO ORE STANDARD O EXTRA
+                    // Logica: prima usa ore standard, poi extra
+                    if ($activity->hours_type === 'extra' || 
+                        ($totalStandardWorked + $taskHours) > $standardDailyCapacity) {
+                        $activityExtraHours += $taskHours;
+                        $totalExtraWorked += $taskHours;
+                    } else {
+                        $activityStandardHours += $taskHours;
+                        $totalStandardWorked += $taskHours;
+                    }
+                    
+                    $activityTasks[] = [
+                        'id' => $task->id,
+                        'name' => $task->name,
+                        'hours' => $taskHours,
+                        'hours_type' => $activity->hours_type ?? 'standard',
+                        'value' => $taskHours * ($activity->hours_type === 'extra' ? $extraHourlyRate : $standardHourlyRate)
+                    ];
+                }
+                
+                if ($activityTotalHours > 0 || $tasksForDay->count() > 0) {
+                    // Inizializza dati cliente se non esistono
+                    if (!isset($clientsData[$client->id])) {
+                        $clientsData[$client->id] = [
+                            'id' => $client->id,
+                            'name' => $client->name,
+                            'projects' => [],
+                            'total_hours' => 0,
+                            'standard_hours' => 0,
+                            'extra_hours' => 0,
+                            'total_value' => 0
+                        ];
+                    }
+                    
+                    // Inizializza dati progetto se non esistono
+                    if (!isset($clientsData[$client->id]['projects'][$project->id])) {
+                        $clientsData[$client->id]['projects'][$project->id] = [
+                            'id' => $project->id,
+                            'name' => $project->name,
+                            'activities' => [],
+                            'total_hours' => 0,
+                            'standard_hours' => 0,
+                            'extra_hours' => 0,
+                            'total_value' => 0
+                        ];
+                    }
+                    
+                    // 🆕 CALCOLO VALORE CON TARIFFE DIFFERENZIATE
+                    $activityStandardValue = $activityStandardHours * $standardHourlyRate;
+                    $activityExtraValue = $activityExtraHours * $extraHourlyRate;
+                    $activityTotalValue = $activityStandardValue + $activityExtraValue;
+                    
+                    $clientsData[$client->id]['projects'][$project->id]['activities'][] = [
+                        'id' => $activity->id,
+                        'name' => $activity->name,
+                        'hours' => $activityTotalHours,
+                        'standard_hours' => $activityStandardHours,
+                        'extra_hours' => $activityExtraHours,
+                        'hours_type' => $activity->hours_type ?? 'standard',
+                        'value' => $activityTotalValue,
+                        'tasks' => $activityTasks
+                    ];
+                    
+                    // Aggiorna totali progetto
+                    $clientsData[$client->id]['projects'][$project->id]['total_hours'] += $activityTotalHours;
+                    $clientsData[$client->id]['projects'][$project->id]['standard_hours'] += $activityStandardHours;
+                    $clientsData[$client->id]['projects'][$project->id]['extra_hours'] += $activityExtraHours;
+                    $clientsData[$client->id]['projects'][$project->id]['total_value'] += $activityTotalValue;
+                    
+                    // Aggiorna totali cliente
+                    $clientsData[$client->id]['total_hours'] += $activityTotalHours;
+                    $clientsData[$client->id]['standard_hours'] += $activityStandardHours;
+                    $clientsData[$client->id]['extra_hours'] += $activityExtraHours;
+                    $clientsData[$client->id]['total_value'] += $activityTotalValue;
+                }
+            }
+            
+            // 🆕 CALCOLA ORE RIMANENTI E VALORE
+            $resourceData['total_hours_worked'] = $totalStandardWorked + $totalExtraWorked;
+            $resourceData['total_standard_hours_worked'] = $totalStandardWorked;
+            $resourceData['total_extra_hours_worked'] = $totalExtraWorked;
+            
+            $resourceData['remaining_standard_hours'] = max(0, $standardDailyCapacity - $totalStandardWorked);
+            $resourceData['remaining_extra_hours'] = max(0, $extraDailyCapacity - $totalExtraWorked);
+            $resourceData['unified_remaining_hours'] = $resourceData['remaining_standard_hours'] + $resourceData['remaining_extra_hours'];
+            $resourceData['remaining_hours'] = $resourceData['unified_remaining_hours']; // Compatibilità
+            
+            // 🆕 CALCOLO VALORE RIMANENTE CON TARIFFE DIFFERENZIATE
+            $remainingStandardValue = $resourceData['remaining_standard_hours'] * $standardHourlyRate;
+            $remainingExtraValue = $resourceData['remaining_extra_hours'] * $extraHourlyRate;
+            $resourceData['remaining_value'] = $remainingStandardValue + $remainingExtraValue;
+            
+            // Converti array clienti in lista
+            $resourceData['clients'] = array_values($clientsData);
+            
+            // Converti progetti da associativo a numerico
+            foreach ($resourceData['clients'] as &$clientData) {
+                $clientData['projects'] = array_values($clientData['projects']);
+            }
+            
+            $dailyData[] = $resourceData;
+        }
+        
+        return $dailyData;
+    }
+    
+    /**
+     * Ottieni i dati budget e redistribuzioni per ogni cliente
      */
     private function getClientsBudgetData($date)
     {
@@ -72,7 +272,6 @@ class DailyHoursController extends Controller
             // Calcola il budget utilizzato attraverso i progetti
             $budgetUsed = 0;
             foreach ($client->projects as $project) {
-                // Calcola il costo effettivo delle attività del progetto
                 foreach ($project->activities as $activity) {
                     if ($activity->resource) {
                         $hourlyRate = $activity->hours_type === 'standard' 
@@ -97,11 +296,9 @@ class DailyHoursController extends Controller
             
             foreach ($redistributions as $redistribution) {
                 if ($redistribution->to_client_id == $client->id) {
-                    // Ore ricevute
                     $hoursTransferredToday += $redistribution->hours;
                     $valueTransferredToday += $redistribution->total_value;
                 } else {
-                    // Ore trasferite ad altri
                     $hoursTransferredToday -= $redistribution->hours;
                     $valueTransferredToday -= $redistribution->total_value;
                 }
@@ -127,197 +324,71 @@ class DailyHoursController extends Controller
     }
     
     /**
-     * Get daily hours data for all resources.
+     * 🆕 NUOVO: Redistribuzione ore unificata
      */
-    private function getDailyHoursData($date, $clientId = null, $projectId = null)
-{
-    $resources = Resource::where('is_active', true)->get();
-    $dailyData = [];
-    
-    foreach ($resources as $resource) {
-        $resourceData = [
-            'id' => $resource->id,
-            'name' => $resource->name,
-            'role' => $resource->role,
-            'daily_hours_capacity' => $resource->working_hours_day ?? 8, // Default 8 ore
-            'hourly_rate' => $resource->selling_price,
-            'tasks' => [],
-            'clients' => [],
-            'total_hours_worked' => 0,
-            'remaining_hours' => 0,
-            'remaining_value' => 0,
-            'redistributions' => []
-        ];
-        
-        // 🆕 SEMPRE calcola le ore lavorate (anche se sono 0)
-        $activitiesQuery = Activity::where(function($query) use ($resource) {
-            $query->where('resource_id', $resource->id)
-                  ->orWhereHas('resources', function($q) use ($resource) {
-                      $q->where('resources.id', $resource->id);
-                  });
-        });
-        
-        // Applica filtri se specificati
-        if ($clientId) {
-            $activitiesQuery->whereHas('project', function($query) use ($clientId) {
-                $query->where('client_id', $clientId);
-            });
-        }
-        
-        if ($projectId) {
-            $activitiesQuery->where('project_id', $projectId);
-        }
-        
-        $activities = $activitiesQuery->with(['project.client', 'tasks'])->get();
-        
-        // Raggruppa per cliente
-        $clientsData = [];
-        
-        foreach ($activities as $activity) {
-            $client = $activity->project->client;
-            $project = $activity->project;
-            
-            // 🆕 CALCOLA ore lavorate in questa data specifica
-            $tasksForDay = $activity->tasks()->whereDate('updated_at', $date)
-                                             ->where('actual_minutes', '>', 0)
-                                             ->get();
-            
-            $activityHours = 0;
-            $activityTasks = [];
-            
-            foreach ($tasksForDay as $task) {
-                $taskHours = $task->actual_minutes / 60;
-                $activityHours += $taskHours;
-                
-                $activityTasks[] = [
-                    'id' => $task->id,
-                    'name' => $task->name,
-                    'hours' => $taskHours,
-                    'value' => $taskHours * $resource->selling_price
-                ];
-            }
-            
-            // 🆕 INCLUDE anche attività con 0 ore se hanno task per questa data
-            if ($activityHours > 0 || $tasksForDay->count() > 0) {
-                // Inizializza dati cliente se non esistono
-                if (!isset($clientsData[$client->id])) {
-                    $clientsData[$client->id] = [
-                        'id' => $client->id,
-                        'name' => $client->name,
-                        'projects' => [],
-                        'total_hours' => 0,
-                        'total_value' => 0
-                    ];
-                }
-                
-                // Inizializza dati progetto se non esistono
-                if (!isset($clientsData[$client->id]['projects'][$project->id])) {
-                    $clientsData[$client->id]['projects'][$project->id] = [
-                        'id' => $project->id,
-                        'name' => $project->name,
-                        'activities' => [],
-                        'total_hours' => 0,
-                        'total_value' => 0
-                    ];
-                }
-                
-                $activityValue = $activityHours * $resource->selling_price;
-                
-                $clientsData[$client->id]['projects'][$project->id]['activities'][] = [
-                    'id' => $activity->id,
-                    'name' => $activity->name,
-                    'hours' => $activityHours,
-                    'value' => $activityValue,
-                    'tasks' => $activityTasks
-                ];
-                
-                // Aggiorna totali
-                $clientsData[$client->id]['projects'][$project->id]['total_hours'] += $activityHours;
-                $clientsData[$client->id]['projects'][$project->id]['total_value'] += $activityValue;
-                $clientsData[$client->id]['total_hours'] += $activityHours;
-                $clientsData[$client->id]['total_value'] += $activityValue;
-                $resourceData['total_hours_worked'] += $activityHours;
-            }
-        }
-        
-        // Ottieni le redistribuzioni esistenti per questa risorsa e data
-        $redistributions = HoursRedistribution::forResource($resource->id)
-            ->forDate($date)
-            ->with(['fromClient', 'toClient', 'user'])
-            ->get();
-        
-        $resourceData['redistributions'] = $redistributions->toArray();
-        
-        // 🆕 CALCOLA SEMPRE le ore rimanenti (anche se 0 ore lavorate)
-        $redistributedHours = $redistributions->sum('hours');
-        $remainingHours = $resourceData['daily_hours_capacity'] - $resourceData['total_hours_worked'] - $redistributedHours;
-        
-        // 🆕 MOSTRA sempre le ore rimanenti se > 0
-        $resourceData['remaining_hours'] = max(0, $remainingHours);
-        $resourceData['remaining_value'] = $resourceData['remaining_hours'] * $resource->selling_price;
-        $resourceData['clients'] = array_values($clientsData);
-        
-        // 🆕 AGGIUNGI sempre la risorsa (anche con 0 ore lavorate)
-        $dailyData[] = $resourceData;
-    }
-    
-    return $dailyData;
-}
-    
-    /**
-     * Redistribute remaining hours to a client.
-     */
-    public function redistributeHours(Request $request)
+    public function redistributeUnifiedHours(Request $request)
     {
         $request->validate([
             'resource_id' => 'required|exists:resources,id',
             'client_id' => 'required|exists:clients,id',
-            'hours' => 'required|numeric|min:0',
-            'action' => 'required|in:return,transfer',
-            'date' => 'required|date',
-            'from_client_id' => 'nullable|exists:clients,id'
+            'total_hours' => 'required|numeric|min:0.1',
+            'standard_hours' => 'required|numeric|min:0',
+            'extra_hours' => 'required|numeric|min:0',
+            'action' => 'required|in:transfer,return',
+            'date' => 'required|date'
         ]);
         
         $resource = Resource::findOrFail($request->resource_id);
         $toClient = Client::findOrFail($request->client_id);
         $fromClient = $request->from_client_id ? Client::findOrFail($request->from_client_id) : null;
-        $hours = $request->hours;
-        $value = $hours * $resource->selling_price;
+        
+        $totalHours = $request->total_hours;
+        $standardHours = $request->standard_hours;
+        $extraHours = $request->extra_hours;
+        
+        // 🆕 CALCOLO VALORE CON TARIFFE DIFFERENZIATE
+        $standardRate = $resource->selling_price ?? 50;
+        $extraRate = $resource->extra_selling_price ?? ($standardRate * 1.2);
+        
+        $standardValue = $standardHours * $standardRate;
+        $extraValue = $extraHours * $extraRate;
+        $totalValue = $standardValue + $extraValue;
         
         try {
             DB::beginTransaction();
             
-            // Crea il record di redistribuzione
+            // 🆕 CREA RECORD DI REDISTRIBUZIONE CON BREAKDOWN
             $redistribution = HoursRedistribution::create([
                 'resource_id' => $resource->id,
                 'from_client_id' => $fromClient ? $fromClient->id : null,
                 'to_client_id' => $toClient->id,
                 'user_id' => Auth::id(),
                 'redistribution_date' => $request->date,
-                'hours' => $hours,
-                'hourly_rate' => $resource->selling_price,
-                'total_value' => $value,
+                'hours' => $totalHours,
+                'standard_hours' => $standardHours,
+                'extra_hours' => $extraHours,
+                'hourly_rate' => $standardRate,
+                'extra_hourly_rate' => $extraRate,
+                'total_value' => $totalValue,
                 'action_type' => $request->action,
-                'notes' => $request->notes
+                'notes' => $request->notes ?? ''
             ]);
             
             if ($request->action === 'return') {
-                // Rimetti le ore nel budget del cliente
-                $toClient->budget += $value;
+                $toClient->budget += $totalValue;
                 $toClient->save();
                 
-                $message = "Restituite {$hours} ore (€{$value}) al budget di {$toClient->name}";
+                $message = "Restituite {$totalHours}h ({$standardHours}h std + {$extraHours}h extra) = €{$totalValue} al budget di {$toClient->name}";
             } else {
-                // Trasferimento: sottrai dal cliente di origine (se specificato) e aggiungi al destinatario
                 if ($fromClient) {
-                    $fromClient->budget -= $value;
+                    $fromClient->budget -= $totalValue;
                     $fromClient->save();
                 }
                 
-                $toClient->budget += $value;
+                $toClient->budget += $totalValue;
                 $toClient->save();
                 
-                $message = "Trasferite {$hours} ore (€{$value}) " . 
+                $message = "Trasferite {$totalHours}h ({$standardHours}h std + {$extraHours}h extra) = €{$totalValue} " . 
                           ($fromClient ? "da {$fromClient->name} " : "") . 
                           "a {$toClient->name}";
             }
@@ -327,17 +398,51 @@ class DailyHoursController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'redistribution_id' => $redistribution->id
+                'redistribution_id' => $redistribution->id,
+                'breakdown' => [
+                    'total_hours' => $totalHours,
+                    'standard_hours' => $standardHours,
+                    'extra_hours' => $extraHours,
+                    'total_value' => $totalValue,
+                    'standard_value' => $standardValue,
+                    'extra_value' => $extraValue
+                ]
             ]);
             
         } catch (\Exception $e) {
             DB::rollback();
+            Log::error('Errore redistribuzione unificata: ' . $e->getMessage());
             
             return response()->json([
                 'success' => false,
                 'message' => 'Errore durante la redistribuzione: ' . $e->getMessage()
             ], 500);
         }
+    }
+    
+    /**
+     * Redistribuzione ore (metodo legacy per compatibilità)
+     */
+    public function redistributeHours(Request $request)
+    {
+        // Converte chiamata legacy in chiamata unificata
+        $totalHours = $request->hours;
+        $standardHours = min($totalHours, 5); // Assume max 5 ore standard
+        $extraHours = max(0, $totalHours - $standardHours);
+        
+        $unifiedRequest = new Request([
+            'resource_id' => $request->resource_id,
+            'client_id' => $request->client_id,
+            'from_client_id' => $request->from_client_id,
+            'total_hours' => $totalHours,
+            'standard_hours' => $standardHours,
+            'extra_hours' => $extraHours,
+            'action' => $request->action,
+            'date' => $request->date,
+            'notes' => $request->notes
+        ]);
+        
+        return $this->redistributeUnifiedHours($unifiedRequest);
     }
     
     /**
@@ -360,10 +465,8 @@ class DailyHoursController extends Controller
         $clientId = $request->get('client_id');
         $projectId = $request->get('project_id');
         
-        $dailyHoursData = $this->getDailyHoursData($date, $clientId, $projectId);
+        $dailyHoursData = $this->getDailyHoursDataUnified($date, $clientId, $projectId);
         
-        // Qui puoi implementare l'export Excel/CSV usando Laravel Excel
-        // Per ora restituisco JSON
         return response()->json([
             'data' => $dailyHoursData,
             'export_date' => $date,
@@ -381,7 +484,6 @@ class DailyHoursController extends Controller
     {
         $redistribution = HoursRedistribution::findOrFail($id);
         
-        // Verifica che la redistribuzione sia stata fatta oggi (o permetti solo entro un certo tempo)
         if ($redistribution->created_at->diffInHours(now()) > 24) {
             return response()->json([
                 'success' => false,
@@ -392,7 +494,6 @@ class DailyHoursController extends Controller
         try {
             DB::beginTransaction();
             
-            // Inverti l'operazione sul budget
             if ($redistribution->action_type === 'return') {
                 $redistribution->toClient->budget -= $redistribution->total_value;
                 $redistribution->toClient->save();
@@ -406,7 +507,6 @@ class DailyHoursController extends Controller
                 }
             }
             
-            // Elimina il record di redistribuzione
             $redistribution->delete();
             
             DB::commit();

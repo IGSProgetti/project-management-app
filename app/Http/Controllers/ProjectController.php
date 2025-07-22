@@ -7,16 +7,36 @@ use App\Models\Client;
 use App\Models\Resource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ProjectController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Aggiorna il metodo index per mostrare progetti creati da tasks
      */
-    public function index()
+    public function index(Request $request)
     {
-        $projects = Project::with('client')->get();
-        $clients = Client::all();
+        $query = Project::with(['client']);
+        
+        // Filtro per origine (creati da tasks o normalmente)
+        if ($request->has('created_from') && $request->created_from !== '') {
+            if ($request->created_from === 'tasks') {
+                $query->where('created_from_tasks', true);
+            } else {
+                $query->where('created_from_tasks', '!=', true)->orWhereNull('created_from_tasks');
+            }
+        }
+        
+        // Filtro per cliente
+        if ($request->has('client') && $request->client !== '') {
+            $query->where('client_id', $request->client);
+        }
+        
+        $projects = $query->orderBy('created_at', 'desc')->get();
+        $clients = Client::orderBy('name')->get();
+        
         return view('projects.index', compact('projects', 'clients'));
     }
 
@@ -234,6 +254,70 @@ class ProjectController extends Controller
     }
 
     /**
+     * Consolida un progetto creato da tasks
+     */
+    public function consolidate(Request $request, string $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'description' => 'nullable|string',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'cost_steps' => 'nullable|array',
+            'cost_steps.*' => 'integer|between:1,8',
+            'default_hours_type' => 'nullable|in:standard,extra'
+        ]);
+        
+        if ($validator->fails()) {
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+        
+        $project = Project::findOrFail($id);
+        
+        // Verifica che il progetto sia stato creato da tasks
+        if (!$project->created_from_tasks) {
+            return redirect()->route('projects.index')
+                ->with('error', 'Questo progetto non è stato creato da tasks e non può essere consolidato.');
+        }
+        
+        try {
+            DB::beginTransaction();
+            
+            // Prepara i dati per il consolidamento
+            $consolidationData = array_filter([
+                'description' => $request->description,
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+                'cost_steps' => $request->cost_steps ?? [1,2,3,4,5,6,7,8],
+                'default_hours_type' => $request->default_hours_type ?? 'standard'
+            ]);
+            
+            // Consolida il progetto (assumendo che il metodo consolidate() sia implementato nel modello)
+            $project->consolidate($consolidationData);
+            
+            // Log dell'operazione
+            Log::info("Progetto consolidato", [
+                'project_id' => $project->id,
+                'project_name' => $project->name,
+                'client_id' => $project->client_id,
+                'user_id' => Auth::id()
+            ]);
+            
+            DB::commit();
+            
+            return redirect()->route('projects.show', $project->id)
+                ->with('success', 'Progetto consolidato con successo. Ora è un progetto ufficiale del sistema.');
+                
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            return redirect()->route('projects.index')
+                ->with('error', 'Errore durante il consolidamento del progetto: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(string $id)
@@ -257,135 +341,103 @@ class ProjectController extends Controller
         return redirect()->route('projects.index')
             ->with('success', 'Progetto eliminato con successo.');
     }
-    
+
     /**
-     * Calculate costs for the project based on resources and cost steps.
+     * Calculate costs for project resources.
      */
     public function calculateCosts(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'resource_ids' => 'required|array',
-            'resource_ids.*' => 'exists:resources,id',
-            'standard_hours' => 'nullable|array',
-            'extra_hours' => 'nullable|array',
+            'client_id' => 'required|exists:clients,id',
             'cost_steps' => 'nullable|array',
+            'resources' => 'required|array',
+            'resources.*.id' => 'required|exists:resources,id',
+            'resources.*.standard_hours' => 'nullable|numeric|min:0',
+            'resources.*.extra_hours' => 'nullable|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
+            return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $resources = Resource::whereIn('id', $request->resource_ids)->get();
         $costSteps = $request->cost_steps ?? [1, 2, 3, 4, 5, 6, 7, 8];
-        
-        $summary = [];
+        $resources = $request->resources;
+        $results = [];
         $totalCost = 0;
-        
-        foreach ($resources as $resource) {
-            $resourceId = $resource->id;
-            $standardHours = $request->standard_hours[$resourceId] ?? 0;
-            $extraHours = $request->extra_hours[$resourceId] ?? 0;
-            
-            if ($standardHours <= 0 && $extraHours <= 0) {
-                continue;
-            }
-            
-            // Calcola il tasso orario in base agli step di costo
-            $stepValues = [
-                1 => 25,    // Costo struttura
-                2 => 12.5,  // Utile gestore azienda
-                3 => 12.5,  // Utile IGS
-                4 => 20,    // Compenso professionista
-                5 => 5,     // Bonus professionista
-                6 => 3,     // Gestore società
-                7 => 8,     // Chi porta il lavoro
-                8 => 14     // Network IGS
-            ];
 
-            $totalDeduction = 0;
-            foreach ($stepValues as $step => $percentage) {
-                if (!in_array($step, $costSteps)) {
-                    $totalDeduction += $percentage;
-                }
-            }
-            
-            // Calcola la tariffa oraria standard e extra
-            $standardAdjustedRate = $resource->selling_price * (1 - $totalDeduction / 100);
-            $extraAdjustedRate = ($resource->extra_selling_price ?: $resource->selling_price) * (1 - $totalDeduction / 100);
-            
-            // Calcola i costi standard e extra
-            $standardCost = $standardHours * $standardAdjustedRate;
-            $extraCost = $extraHours * $extraAdjustedRate;
-            $totalResourceCost = $standardCost + $extraCost;
-            
-            // Aggiungi alla somma totale
-            $totalCost += $totalResourceCost;
-            
-            $summary[] = [
-                'id' => $resourceId,
-                'name' => $resource->name,
-                'role' => $resource->role,
+        // Crea un progetto temporaneo per calcolare le tariffe
+        $tempProject = new Project();
+        $tempProject->cost_steps = $costSteps;
+        $tempProject->client_id = $request->client_id;
+
+        foreach ($resources as $resourceData) {
+            $resource = Resource::find($resourceData['id']);
+            if (!$resource) continue;
+
+            $standardHours = floatval($resourceData['standard_hours'] ?? 0);
+            $extraHours = floatval($resourceData['extra_hours'] ?? 0);
+
+            $standardRate = $tempProject->calculateAdjustedRate($resource->selling_price);
+            $extraRate = $tempProject->calculateAdjustedRate($resource->extra_selling_price ?: $resource->selling_price);
+
+            $standardCost = $standardHours * $standardRate;
+            $extraCost = $extraHours * $extraRate;
+            $resourceTotalCost = $standardCost + $extraCost;
+
+            $results[] = [
+                'resource_id' => $resource->id,
+                'resource_name' => $resource->name,
                 'standard_hours' => $standardHours,
                 'extra_hours' => $extraHours,
-                'standard_adjusted_rate' => $standardAdjustedRate,
-                'extra_adjusted_rate' => $extraAdjustedRate,
+                'standard_rate' => $standardRate,
+                'extra_rate' => $extraRate,
                 'standard_cost' => $standardCost,
                 'extra_cost' => $extraCost,
-                'total_cost' => $totalResourceCost,
+                'total_cost' => $resourceTotalCost
             ];
+
+            $totalCost += $resourceTotalCost;
         }
-        
+
         return response()->json([
             'success' => true,
-            'summary' => $summary,
-            'total_cost' => $totalCost,
+            'results' => $results,
+            'total_cost' => $totalCost
         ]);
     }
-    
+
     /**
-     * Get a summary of the project for API/AJAX requests.
+     * Get project summary for API requests.
      */
     public function getSummary(string $id)
     {
-        $project = Project::with(['client', 'resources', 'activities.resource', 'areas'])->findOrFail($id);
+        $project = Project::with(['client', 'resources', 'activities', 'areas'])->findOrFail($id);
         
+        // Statistiche attività
         $activityStats = [
             'total' => $project->activities->count(),
-            'completed' => $project->activities->where('status', 'completed')->count(),
-            'in_progress' => $project->activities->where('status', 'in_progress')->count(),
             'pending' => $project->activities->where('status', 'pending')->count(),
+            'in_progress' => $project->activities->where('status', 'in_progress')->count(),
+            'completed' => $project->activities->where('status', 'completed')->count(),
         ];
         
-        $resourceStats = $project->resources->map(function ($resource) use ($project) {
-            $activities = $project->activities->where('resource_id', $resource->id);
-            
-            return [
-                'id' => $resource->id,
-                'name' => $resource->name,
-                'hours' => $resource->pivot->hours,
-                'hours_type' => $resource->pivot->hours_type,
-                'cost' => $resource->pivot->cost,
-                'activities_count' => $activities->count(),
-                'completed_activities' => $activities->where('status', 'completed')->count(),
-            ];
-        });
+        // Statistiche risorse
+        $resourceStats = [
+            'total' => $project->resources->count(),
+            'standard_hours' => $project->resources->where('pivot.hours_type', 'standard')->sum('pivot.hours'),
+            'extra_hours' => $project->resources->where('pivot.hours_type', 'extra')->sum('pivot.hours'),
+        ];
         
         return response()->json([
             'success' => true,
             'project' => [
                 'id' => $project->id,
                 'name' => $project->name,
+                'description' => $project->description,
                 'status' => $project->status,
-                'default_hours_type' => $project->default_hours_type,
-                'client' => [
-                    'id' => $project->client->id,
-                    'name' => $project->client->name,
-                ],
                 'total_cost' => $project->total_cost,
-                'progress' => $project->progress_percentage,
+                'progress_percentage' => $project->progress_percentage,
+                'client' => $project->client->name,
                 'start_date' => $project->start_date ? $project->start_date->format('Y-m-d') : null,
                 'end_date' => $project->end_date ? $project->end_date->format('Y-m-d') : null,
                 'activity_stats' => $activityStats,

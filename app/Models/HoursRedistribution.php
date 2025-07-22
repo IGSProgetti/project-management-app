@@ -2,13 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class HoursRedistribution extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'resource_id',
         'from_client_id',
@@ -16,7 +14,10 @@ class HoursRedistribution extends Model
         'user_id',
         'redistribution_date',
         'hours',
+        'standard_hours',    // 🆕 NUOVO
+        'extra_hours',       // 🆕 NUOVO
         'hourly_rate',
+        'extra_hourly_rate', // 🆕 NUOVO
         'total_value',
         'action_type',
         'notes'
@@ -25,7 +26,10 @@ class HoursRedistribution extends Model
     protected $casts = [
         'redistribution_date' => 'date',
         'hours' => 'decimal:2',
+        'standard_hours' => 'decimal:2',    // 🆕 NUOVO
+        'extra_hours' => 'decimal:2',       // 🆕 NUOVO
         'hourly_rate' => 'decimal:2',
+        'extra_hourly_rate' => 'decimal:2', // 🆕 NUOVO
         'total_value' => 'decimal:2'
     ];
 

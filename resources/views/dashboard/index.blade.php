@@ -232,6 +232,92 @@
         </div>
     </div>
 </div>
+
+<!-- Widget da aggiungere alla dashboard per monitorare gli elementi creati da tasks -->
+
+<div class="col-md-6 col-lg-4 mb-4">
+    <div class="card h-100 border-warning">
+        <div class="card-header bg-warning text-dark">
+            <h6 class="card-title mb-0">
+                <i class="fas fa-exclamation-triangle"></i> Elementi da Consolidare
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-6">
+                    <div class="border-end">
+                        <h4 class="text-warning mb-0" id="clientsFromTasks">-</h4>
+                        <small class="text-muted">Clienti da Tasks</small>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <h4 class="text-warning mb-0" id="projectsFromTasks">-</h4>
+                    <small class="text-muted">Progetti da Tasks</small>
+                </div>
+            </div>
+            
+            <hr class="my-3">
+            
+            <div class="row text-center">
+                <div class="col-12">
+                    <h5 class="text-info mb-0" id="tasksToReassign">-</h5>
+                    <small class="text-muted">Tasks da Riassegnare</small>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer bg-light">
+            <div class="row">
+                <div class="col-6">
+                    <a href="{{ route('clients.index') }}?created_from=tasks" class="btn btn-outline-warning btn-sm w-100">
+                        <i class="fas fa-users"></i> Clienti
+                    </a>
+                </div>
+                <div class="col-6">
+                    <a href="{{ route('projects.index') }}?created_from=tasks" class="btn btn-outline-warning btn-sm w-100">
+                        <i class="fas fa-project-diagram"></i> Progetti
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Script da aggiungere alla dashboard per caricare i dati
+document.addEventListener('DOMContentLoaded', function() {
+    loadTasksCreatedStats();
+    
+    // Aggiorna ogni 5 minuti
+    setInterval(loadTasksCreatedStats, 300000);
+});
+
+function loadTasksCreatedStats() {
+    // Carica statistiche clienti
+    fetch('/api/clients/tasks-created-stats')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('clientsFromTasks').textContent = data.pending_consolidation || 0;
+        })
+        .catch(error => {
+            console.error('Errore caricamento stats clienti:', error);
+            document.getElementById('clientsFromTasks').textContent = '?';
+        });
+    
+    // Carica statistiche progetti
+    fetch('/api/projects/tasks-created-stats')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('projectsFromTasks').textContent = data.pending_consolidation || 0;
+            document.getElementById('tasksToReassign').textContent = data.total_tasks_to_reassign || 0;
+        })
+        .catch(error => {
+            console.error('Errore caricamento stats progetti:', error);
+            document.getElementById('projectsFromTasks').textContent = '?';
+            document.getElementById('tasksToReassign').textContent = '?';
+        });
+}
+</script>
+
 @endsection
 
 @push('styles')

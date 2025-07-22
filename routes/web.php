@@ -99,6 +99,24 @@ Route::middleware(['auth'])->group(function () {
     
     // Dettagli task per risorsa
     Route::get('resource/{resourceId}/tasks', [ResourceHoursController::class, 'getResourceTaskDetails'])->name('resource.tasks');
+
+    // API per creazione al volo da tasks
+    Route::post('/tasks/create-client', [TaskController::class, 'createClientFromTasks'])->name('tasks.create-client');
+    Route::post('/tasks/create-project', [TaskController::class, 'createProjectFromTasks'])->name('tasks.create-project');
+    
+    // API per caricamento dati dinamico
+    Route::get('/api/projects-by-client/{client}', [TaskController::class, 'getProjectsByClient'])->name('api.projects-by-client');
+    Route::get('/api/activities-by-project/{project}', [TaskController::class, 'getActivitiesByProject'])->name('api.activities-by-project');
+    Route::get('/api/project-tasks/{project}', [TaskController::class, 'getProjectTasks'])->name('api.project-tasks');
+    
+    // Consolidamento clienti e progetti
+    Route::patch('/clients/{client}/consolidate', [ClientController::class, 'consolidate'])->name('clients.consolidate');
+    Route::patch('/projects/{project}/consolidate', [ProjectController::class, 'consolidate'])->name('projects.consolidate');
+    Route::post('/projects/{project}/reassign-tasks', [ProjectController::class, 'reassignTasks'])->name('projects.reassign-tasks');
+    
+    // API per statistiche
+    Route::get('/api/clients/tasks-created-stats', [ClientController::class, 'getTasksCreatedStats'])->name('api.clients.tasks-stats');
+    Route::get('/api/projects/tasks-created-stats', [ProjectController::class, 'getTasksCreatedStats'])->name('api.projects.tasks-stats');
 });
 
 // Amministrazione utenti e ore giornaliere (solo per admin)
@@ -141,3 +159,9 @@ Route::put('/resources/{resource}/treasure', [ResourceController::class, 'update
 Route::get('/treasure/dashboard', function () {
     return view('treasure.dashboard');
 })->name('treasure.dashboard');
+
+// Aggiungi questa riga nella sezione delle rotte daily-hours esistenti:
+
+Route::post('/daily-hours/redistribute-unified', [DailyHoursController::class, 'redistributeUnifiedHours'])
+      ->name('daily-hours.redistribute-unified');
+
