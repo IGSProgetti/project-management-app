@@ -57,15 +57,15 @@
                     <div class="col-md-12 mb-3">
                         <h4>Informazioni Lavorative</h4>
                     </div>
-                    <div class="col-md-3 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label for="monthly_compensation">Compenso Mensile (€)</label>
-                        <input type="number" id="monthly_compensation" name="monthly_compensation" class="form-control @error('monthly_compensation') is-invalid @enderror" value="{{ old('monthly_compensation') }}" min="0" step="0.01" required>
+                        <input type="number" id="monthly_compensation" name="monthly_compensation" class="form-control @error('monthly_compensation') is-invalid @enderror" value="{{ old('monthly_compensation', 4000) }}" min="0" step="0.01" required>
                         @error('monthly_compensation')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     
-                    <div class="col-md-3 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label for="working_days_year">Giorni Lavorativi/Anno</label>
                         <input type="number" id="working_days_year" name="working_days_year" class="form-control @error('working_days_year') is-invalid @enderror" value="{{ old('working_days_year', 220) }}" min="1" max="365" required>
                         @error('working_days_year')
@@ -73,53 +73,58 @@
                         @enderror
                     </div>
                     
-                    <div class="col-md-3 mb-3">
+                    <div class="col-md-4 mb-3">
                         <label for="working_hours_day">Ore Standard/Giorno</label>
                         <input type="number" id="working_hours_day" name="working_hours_day" class="form-control @error('working_hours_day') is-invalid @enderror" value="{{ old('working_hours_day', 8) }}" min="0.5" max="24" step="0.5" required>
                         @error('working_hours_day')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                    
-                    <div class="col-md-3 mb-3">
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
                         <label for="extra_hours_day">Ore Extra/Giorno</label>
-                        <input type="number" id="extra_hours_day" name="extra_hours_day" class="form-control @error('extra_hours_day') is-invalid @enderror" value="{{ old('extra_hours_day', 0) }}" min="0" max="24" step="0.5">
+                        <input type="number" id="extra_hours_day" name="extra_hours_day" class="form-control @error('extra_hours_day') is-invalid @enderror" value="{{ old('extra_hours_day', 3) }}" min="0" max="24" step="0.5">
                         @error('extra_hours_day')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-12 mb-3">
+                    
+                    <div class="col-md-8 mb-3 d-flex align-items-end">
                         <button type="button" id="calculateCostsBtn" class="btn btn-info">
-                            Calcola Costi
+                            <i class="fas fa-calculator"></i> Calcola Costi
                         </button>
                     </div>
                 </div>
                 
+                <!-- Sezione risultati calcolo -->
                 <div id="resultsSection" style="display: none;">
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h3>Risultati Calcolo Costi</h3>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <h4>Risultati Calcolo</h4>
                         </div>
-                        <div class="card-body">
-                            <div id="costResults" class="mb-4"></div>
-                            
-                            <h4>Schema Remunerativo</h4>
-                            <div class="table-responsive">
-                                <table class="table" id="breakdownTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Componente</th>
-                                            <th>Percentuale</th>
-                                            <th>Valore (€/h)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-                            
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-4">
+                            <h5>Breakdown Remunerazione</h5>
+                            <table class="table table-striped" id="remunerationTable">
+                                <thead>
+                                    <tr>
+                                        <th>Componente</th>
+                                        <th>Percentuale</th>
+                                        <th>Importo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
                             <!-- Campi nascosti per l'invio dei dati calcolati -->
                             <input type="hidden" id="cost_price" name="cost_price" value="{{ old('cost_price') }}">
                             <input type="hidden" id="selling_price" name="selling_price" value="{{ old('selling_price') }}">
@@ -145,6 +150,18 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Funzione helper per convertire valori in numeri sicuri
+        function safeNumber(value, defaultValue = 0) {
+            const num = parseFloat(value);
+            return isNaN(num) ? defaultValue : num;
+        }
+
+        // Funzione helper per formattare numeri con toFixed sicuro
+        function safeToFixed(value, decimals = 2) {
+            const num = safeNumber(value, 0);
+            return num.toFixed(decimals);
+        }
+
         // Calcolo dei costi al click del pulsante
         document.getElementById('calculateCostsBtn').addEventListener('click', function() {
             const monthlyCompensation = parseFloat(document.getElementById('monthly_compensation').value) || 0;
@@ -209,54 +226,55 @@
         }
 
         function displayResults(data, workingDaysYear, workingHoursDay, extraHoursDay) {
-            const costResults = document.getElementById('costResults');
+            const tbody = document.querySelector('#remunerationTable tbody');
             
-            // Calcola le ore disponibili all'anno
-            const standardHoursPerYear = workingDaysYear * workingHoursDay;
-            const extraHoursPerYear = workingDaysYear * extraHoursDay;
-            
-            costResults.innerHTML = `
-                <h5>Costi Ore Standard:</h5>
-                <p><strong>Prezzo di Costo:</strong> ${data.costPrice.toFixed(2)} €/h</p>
-                <p><strong>Costo Orario di Vendita:</strong> ${data.sellingPrice.toFixed(2)} €/h</p>
-                <p><strong>Ore Standard Disponibili/Anno:</strong> ${standardHoursPerYear.toFixed(2)}</p>
-            `;
+            if (tbody && data.breakdown) {
+                tbody.innerHTML = '';
 
-            // Aggiungi informazioni sui costi e ore extra se specificati
-            if (extraHoursDay > 0 && data.extraCostPrice && data.extraSellingPrice) {
-                costResults.innerHTML += `
-                    <hr>
-                    <h5>Costi Ore Extra:</h5>
-                    <p><strong>Prezzo di Costo Extra:</strong> ${data.extraCostPrice.toFixed(2)} €/h</p>
-                    <p><strong>Costo Orario di Vendita Extra:</strong> ${data.extraSellingPrice.toFixed(2)} €/h</p>
-                    <p><strong>Ore Extra Disponibili/Anno:</strong> ${extraHoursPerYear.toFixed(2)}</p>
-                `;
+                for (const [component, value] of Object.entries(data.breakdown)) {
+                    const percentage = getPercentageByComponent(component);
+                    const row = tbody.insertRow();
+                    
+                    const cell1 = row.insertCell(0);
+                    const cell2 = row.insertCell(1);
+                    const cell3 = row.insertCell(2);
+                    
+                    cell1.innerHTML = component;
+                    cell2.innerHTML = `${percentage}%`;
+                    // Usa safeToFixed invece di toFixed diretto - supporta sia value.amount che value diretto
+                    cell3.innerHTML = `${safeToFixed(value.amount || value, 2)} €`;
+                }
             }
-
-            const breakdownTable = document.getElementById('breakdownTable').getElementsByTagName('tbody')[0];
-            breakdownTable.innerHTML = '';
-
-            for (const [component, value] of Object.entries(data.breakdown)) {
-                const percentage = getPercentageByComponent(component);
-                const row = breakdownTable.insertRow();
-                
-                const cell1 = row.insertCell(0);
-                const cell2 = row.insertCell(1);
-                const cell3 = row.insertCell(2);
-                
-                cell1.innerHTML = component;
-                cell2.innerHTML = `${percentage}%`;
-                cell3.innerHTML = `${value.toFixed(2)} €`;
-            }
-
-            // Imposta i valori nei campi nascosti per l'invio del form
-            document.getElementById('cost_price').value = data.costPrice;
-            document.getElementById('selling_price').value = data.sellingPrice;
-            document.getElementById('remuneration_breakdown').value = JSON.stringify(data.breakdown);
             
+            // Aggiorna i campi nascosti per l'invio del form - con validazione
+            const costPriceField = document.getElementById('cost_price');
+            const sellingPriceField = document.getElementById('selling_price');
+            const remunerationField = document.getElementById('remuneration_breakdown');
+            
+            if (costPriceField) {
+                costPriceField.value = safeToFixed(data.costPrice, 2);
+            }
+            
+            if (sellingPriceField) {
+                sellingPriceField.value = safeToFixed(data.sellingPrice, 2);
+            }
+            
+            if (remunerationField) {
+                remunerationField.value = JSON.stringify(data.breakdown || {});
+            }
+            
+            // Gestisci i campi extra se presenti
             if (data.extraCostPrice && data.extraSellingPrice) {
-                document.getElementById('extra_cost_price').value = data.extraCostPrice;
-                document.getElementById('extra_selling_price').value = data.extraSellingPrice;
+                const extraCostField = document.getElementById('extra_cost_price');
+                const extraSellingField = document.getElementById('extra_selling_price');
+                
+                if (extraCostField) {
+                    extraCostField.value = safeToFixed(data.extraCostPrice, 2);
+                }
+                
+                if (extraSellingField) {
+                    extraSellingField.value = safeToFixed(data.extraSellingPrice, 2);
+                }
             }
         }
 

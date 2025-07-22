@@ -4,98 +4,65 @@
 
 @section('content')
 <div class="container-fluid">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <h1><i class="fas fa-clock"></i> Gestione Ore Giornaliere</h1>
-            <p class="text-muted">Controllo delle ore lavorative giornaliere e gestione budget clienti</p>
-        </div>
-        <div class="col-md-4 text-end">
-            <button class="btn btn-success" id="exportBtn">
-                <i class="fas fa-download"></i> Esporta Dati
-            </button>
-            <button class="btn btn-primary" onclick="window.location.reload()">
-                <i class="fas fa-sync"></i> Aggiorna
-            </button>
-        </div>
+    <!-- Header con Export -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-calendar-day"></i> Gestione Ore Giornaliere</h1>
+        <button id="exportBtn" class="btn btn-success">
+            <i class="fas fa-download"></i> Esporta Dati
+        </button>
     </div>
 
-    <!-- 🆕 NUOVA SEZIONE: Dashboard Budget Clienti -->
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="fas fa-chart-line"></i> Riepilogo Budget Clienti - {{ Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }}</h5>
-        </div>
-        <div class="card-body">
+    <!-- 🆕 CARD BUDGET CLIENTI -->
+    @if(!empty($clientsBudgetData) && count($clientsBudgetData) > 0)
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4><i class="fas fa-chart-line"></i> Budget Clienti e Redistribuzioni</h4>
             <div class="row">
                 @foreach($clientsBudgetData as $clientData)
-                    <div class="col-md-6 col-lg-4 mb-3" data-client-id="{{ $clientData['id'] }}">
-                        <div class="card h-100 border-start border-4 
-                            @if($clientData['budget_usage_percentage'] > 90) border-danger
-                            @elseif($clientData['budget_usage_percentage'] > 75) border-warning
-                            @else border-success
-                            @endif">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6 class="card-title mb-0">{{ $clientData['name'] }}</h6>
-                                    <span class="badge 
-                                        @if($clientData['budget_usage_percentage'] > 90) bg-danger
-                                        @elseif($clientData['budget_usage_percentage'] > 75) bg-warning
-                                        @else bg-success
-                                        @endif">
-                                        {{ number_format($clientData['budget_usage_percentage'], 1) }}%
-                                    </span>
+                <div class="col-md-4 mb-3">
+                    <div class="card" data-client-id="{{ $clientData['id'] }}">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <strong>{{ $clientData['name'] }}</strong>
+                            <span class="badge badge-{{ $clientData['budget_usage_percentage'] > 80 ? 'danger' : ($clientData['budget_usage_percentage'] > 60 ? 'warning' : 'success') }}">
+                                {{ number_format($clientData['budget_usage_percentage'], 1) }}%
+                            </span>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <strong>Budget Totale:</strong><br>
+                                    <span class="text-primary">€{{ number_format($clientData['budget_total'], 2) }}</span>
                                 </div>
-                                
-                                <div class="row text-sm">
-                                    <div class="col-6">
-                                        <small class="text-muted">Budget Totale:</small><br>
-                                        <strong>€{{ number_format($clientData['budget_total'], 2) }}</strong>
-                                    </div>
-                                    <div class="col-6">
-                                        <small class="text-muted">Utilizzato:</small><br>
-                                        <strong class="text-danger">€{{ number_format($clientData['budget_used'], 2) }}</strong>
-                                    </div>
-                                </div>
-                                
-                                <div class="row text-sm mt-2">
-                                    <div class="col-6">
-                                        <small class="text-muted">Rimanente:</small><br>
-                                        <strong class="text-success">€{{ number_format($clientData['budget_remaining'], 2) }}</strong>
-                                    </div>
-                                    <div class="col-6">
-                                        <small class="text-muted">Redistribuzioni:</small><br>
-                                        <strong>{{ $clientData['redistributions_count'] }}</strong>
-                                    </div>
-                                </div>
-                                
-                                @if($clientData['hours_transferred_today'] != 0)
-                                    <div class="mt-2 p-2 rounded" style="background-color: #f8f9fa;">
-                                        <small class="text-muted">Ore trasferite oggi:</small><br>
-                                        <strong class="{{ $clientData['hours_transferred_today'] > 0 ? 'text-success' : 'text-danger' }}">
-                                            {{ $clientData['hours_transferred_today'] > 0 ? '+' : '' }}{{ number_format($clientData['hours_transferred_today'], 1) }}h
-                                            ({{ $clientData['value_transferred_today'] > 0 ? '+' : '' }}€{{ number_format($clientData['value_transferred_today'], 2) }})
-                                        </strong>
-                                    </div>
-                                @endif
-                                
-                                <!-- Barra di progressione budget -->
-                                <div class="progress mt-3" style="height: 6px;">
-                                    <div class="progress-bar 
-                                        @if($clientData['budget_usage_percentage'] > 90) bg-danger
-                                        @elseif($clientData['budget_usage_percentage'] > 75) bg-warning
-                                        @else bg-success
-                                        @endif" 
-                                        role="progressbar" 
-                                        style="width: {{ min(100, $clientData['budget_usage_percentage']) }}%">
-                                    </div>
+                                <div class="col-6">
+                                    <strong>Utilizzato:</strong><br>
+                                    <span class="text-{{ $clientData['budget_usage_percentage'] > 80 ? 'danger' : 'success' }}">€{{ number_format($clientData['budget_used'], 2) }}</span>
                                 </div>
                             </div>
+                            <div class="row text-center mt-2">
+                                <div class="col-6">
+                                    <strong>Rimanente:</strong><br>
+                                    <span class="text-success budget-remaining">€{{ number_format($clientData['budget_remaining'], 2) }}</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Redistribuzioni:</strong><br>
+                                    <span class="text-info">{{ $clientData['redistributions_count'] }}</span>
+                                </div>
+                            </div>
+                            @if($clientData['hours_transferred_today'] != 0)
+                            <div class="mt-2 p-2 bg-light rounded">
+                                <small class="text-muted">Oggi trasferite:</small><br>
+                                <strong class="transferred-hours">{{ $clientData['hours_transferred_today'] > 0 ? '+' : '' }}{{ number_format($clientData['hours_transferred_today'], 1) }}h</strong>
+                                <span class="text-muted">(€{{ number_format($clientData['value_transferred_today'], 2) }})</span>
+                            </div>
+                            @endif
                         </div>
                     </div>
+                </div>
                 @endforeach
             </div>
         </div>
     </div>
+    @endif
 
     <!-- Filtri -->
     <div class="card mb-4">
@@ -190,148 +157,84 @@
         </div>
     </div>
 
-    <!-- Tabella Principale (resto uguale) -->
-    @foreach($dailyHoursData as $resourceData)
-        <div class="card mb-4">
-            <div class="card-header">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h5 class="mb-0">
-                            <i class="fas fa-user"></i> {{ $resourceData['name'] }} 
-                            <small class="text-muted">({{ $resourceData['role'] }})</small>
-                        </h5>
-                    </div>
-                    <div class="col-md-6 text-end">
-                        <span class="badge bg-info me-2">
-                            Capacità: {{ $resourceData['daily_hours_capacity'] }}h
-                        </span>
-                        <span class="badge bg-success me-2">
-                            Lavorate: {{ number_format($resourceData['total_hours_worked'], 1) }}h
-                        </span>
+    <!-- Ore Giornaliere per Risorsa -->
+    <div class="row">
+        @foreach($dailyHoursData as $resourceData)
+        <div class="col-12 mb-4">
+            <div class="card" data-resource-id="{{ $resourceData['id'] }}" data-hourly-rate="{{ $resourceData['hourly_rate'] ?? 50 }}">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="fas fa-user text-primary"></i> {{ $resourceData['name'] }} 
+                                <span class="badge bg-info">{{ $resourceData['role'] }}</span>
+                            </h5>
+                            <small class="text-muted">
+                                Capacità: {{ $resourceData['daily_hours_capacity'] }}h/giorno | 
+                                Ore Lavorate: {{ number_format($resourceData['total_hours_worked'], 1) }}h |
+                                <span class="remaining-hours">{{ number_format($resourceData['remaining_hours'], 1) }}</span>h rimanenti 
+                                (<span class="remaining-value">€{{ number_format($resourceData['remaining_value'], 2) }}</span>)
+                            </small>
+                        </div>
+                        
                         @if($resourceData['remaining_hours'] > 0)
-    <div class="card-body border-bottom bg-light">
-        <div class="row">
-            <div class="col-md-6">
-                <strong>Ore Disponibili per Redistribuzione:</strong><br>
-                <span class="text-primary fs-5">{{ number_format($resourceData['remaining_hours'], 1) }} ore</span>
-                <small class="text-muted d-block">Valore totale: €{{ number_format($resourceData['remaining_value'], 2) }}</small>
-            </div>
-            <div class="col-md-6 text-end">
-                <div class="d-flex flex-wrap gap-2 justify-content-end">
-                    @if(!empty($resourceData['clients']))
-                        @foreach($resourceData['clients'] as $client)
-                            <button class="btn btn-sm btn-outline-primary redistribute-btn"
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-warning btn-sm transfer-btn" 
                                     data-resource-id="{{ $resourceData['id'] }}"
-                                    data-client-id="{{ $client['id'] }}"
-                                    data-max-hours="{{ $resourceData['remaining_hours'] }}"
-                                    data-action="return">
-                                <i class="fas fa-undo"></i> Rimetti a {{ $client['name'] }}
-                            </button>
-                        @endforeach
-                        <div class="w-100"></div>
-                    @endif
-                    <button class="btn btn-sm btn-success transfer-btn"
-                            data-resource-id="{{ $resourceData['id'] }}"
-                            data-max-hours="{{ $resourceData['remaining_hours'] }}">
-                        <i class="fas fa-exchange-alt"></i> Trasferisci a Cliente
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-@endif
-                    </div>
-                </div>
-            </div>
-            
-            @if($resourceData['remaining_hours'] > 0)
-                <div class="card-body border-bottom bg-light">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <strong>Gestione Ore Avanzate:</strong>
-                            {{ number_format($resourceData['remaining_hours'], 1) }} ore 
-                            (€{{ number_format($resourceData['remaining_value'], 2) }})
-                        </div>
-                        <div class="col-md-4 text-end">
-                            @foreach($resourceData['clients'] as $client)
-                                <button class="btn btn-sm btn-outline-primary me-1 redistribute-btn"
-                                        data-resource-id="{{ $resourceData['id'] }}"
-                                        data-client-id="{{ $client['id'] }}"
-                                        data-hours="{{ $resourceData['remaining_hours'] }}"
-                                        data-action="return">
-                                    <i class="fas fa-undo"></i> Rimetti a {{ $client['name'] }}
-                                </button>
-                            @endforeach
-                            <button class="btn btn-sm btn-outline-secondary transfer-btn"
-                                    data-resource-id="{{ $resourceData['id'] }}"
-                                    data-hours="{{ $resourceData['remaining_hours'] }}">
-                                <i class="fas fa-exchange-alt"></i> Trasferisci
+                                    data-max-hours="{{ $resourceData['remaining_hours'] }}">
+                                <i class="fas fa-share"></i> Trasferisci ({{ number_format($resourceData['remaining_hours'], 1) }}h)
                             </button>
                         </div>
+                        @endif
                     </div>
                 </div>
-            @endif
-            
-            <div class="card-body">
-                @if(empty($resourceData['clients']))
-                    <p class="text-muted text-center">Nessuna attività registrata per questa data</p>
-                @else
-                    <!-- Accordion per ogni cliente -->
-                    @foreach($resourceData['clients'] as $clientIndex => $client)
-                        <div class="accordion mb-3" id="client-{{ $resourceData['id'] }}-{{ $client['id'] }}">
-                            <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" 
-                                            data-bs-toggle="collapse" 
-                                            data-bs-target="#collapse-client-{{ $resourceData['id'] }}-{{ $client['id'] }}">
-                                        <strong>{{ $client['name'] }}</strong>
-                                        <span class="ms-auto me-3">
-                                            <span class="badge bg-primary">
-                                                {{ number_format($client['total_hours'], 1) }}h
-                                            </span>
-                                            <span class="badge bg-success">
-                                                €{{ number_format($client['total_value'], 2) }}
-                                            </span>
-                                        </span>
-                                    </button>
-                                </h2>
-                                <div id="collapse-client-{{ $resourceData['id'] }}-{{ $client['id'] }}" 
-                                     class="accordion-collapse collapse">
-                                    <div class="accordion-body">
-                                        @foreach($client['projects'] as $project)
-                                            <div class="border rounded p-3 mb-3">
-                                                <h6>
-                                                    <i class="fas fa-project-diagram"></i> {{ $project['name'] }}
-                                                    <span class="float-end">
-                                                        <span class="badge bg-info">
-                                                            {{ number_format($project['total_hours'], 1) }}h
-                                                        </span>
-                                                        <span class="badge bg-secondary">
-                                                            €{{ number_format($project['total_value'], 2) }}
-                                                        </span>
-                                                    </span>
-                                                </h6>
-                                                
-                                                @foreach($project['activities'] as $activity)
-                                                    <div class="ms-3 mt-2 border-start border-2 ps-3">
-                                                        <strong>{{ $activity['name'] }}</strong>
-                                                        <span class="badge bg-light text-dark ms-2">
-                                                            {{ number_format($activity['hours'], 1) }}h
-                                                        </span>
-                                                        <span class="badge bg-light text-dark">
-                                                            €{{ number_format($activity['value'], 2) }}
-                                                        </span>
+                
+                @if(!empty($resourceData['clients']))
+                    <div class="card-body">
+                        <div class="row">
+                            @foreach($resourceData['clients'] as $clientData)
+                                <div class="col-md-6 mb-3">
+                                    <div class="border rounded p-3 h-100">
+                                        <h6 class="text-primary">
+                                            <i class="fas fa-building"></i> {{ $clientData['name'] }}
+                                        </h6>
+                                        <p class="mb-2">
+                                            <strong>Totale ore:</strong> {{ number_format($clientData['total_hours'], 1) }}h<br>
+                                            <strong>Valore:</strong> €{{ number_format($clientData['total_value'], 2) }}
+                                        </p>
+                                        
+                                        @if($clientData['total_hours'] > 0)
+                                        <div class="btn-group w-100 mb-2">
+                                            <button type="button" class="btn btn-success btn-sm redistribute-btn"
+                                                    data-resource-id="{{ $resourceData['id'] }}"
+                                                    data-client-id="{{ $clientData['id'] }}"
+                                                    data-max-hours="{{ $clientData['total_hours'] }}">
+                                                <i class="fas fa-undo"></i> Rimetti ({{ number_format($clientData['total_hours'], 1) }}h)
+                                            </button>
+                                        </div>
+                                        @endif
+                                        
+                                        @if(!empty($clientData['projects']))
+                                            <div class="projects-details">
+                                                @foreach($clientData['projects'] as $projectData)
+                                                    <div class="mb-2">
+                                                        <strong class="text-info">{{ $projectData['name'] }}</strong>
+                                                        <span class="badge bg-secondary">{{ number_format($projectData['total_hours'], 1) }}h</span>
                                                         
-                                                        @if(!empty($activity['tasks']))
-                                                            <div class="mt-2">
-                                                                <small class="text-muted">Task:</small>
-                                                                @foreach($activity['tasks'] as $task)
-                                                                    <div class="ms-3">
-                                                                        <small>
-                                                                            • {{ $task['name'] }} 
-                                                                            ({{ number_format($task['hours'], 1) }}h - 
-                                                                            €{{ number_format($task['value'], 2) }})
-                                                                        </small>
+                                                        @if(!empty($projectData['activities']))
+                                                            <div class="ms-3 mt-1">
+                                                                @foreach($projectData['activities'] as $activityData)
+                                                                    <div class="small text-muted">
+                                                                        • {{ $activityData['name'] }}: {{ number_format($activityData['hours'], 1) }}h
+                                                                        @if(!empty($activityData['tasks']))
+                                                                            <div class="ms-3">
+                                                                                @foreach($activityData['tasks'] as $taskData)
+                                                                                    <div class="small">
+                                                                                        - {{ $taskData['name'] }}: {{ number_format($taskData['hours'], 1) }}h
+                                                                                    </div>
+                                                                                @endforeach
+                                                                            </div>
+                                                                        @endif
                                                                     </div>
                                                                 @endforeach
                                                             </div>
@@ -339,16 +242,17 @@
                                                     </div>
                                                 @endforeach
                                             </div>
-                                        @endforeach
+                                        @endif
                                     </div>
                                 </div>
-                            </div>
+                            @endforeach
                         </div>
-                    @endforeach
+                    </div>
                 @endif
             </div>
         </div>
-    @endforeach
+        @endforeach
+    </div>
 </div>
 
 <!-- Modal per Redistribuzione Ore -->
@@ -414,11 +318,34 @@
     </div>
 </div>
 
+<!-- Toast per notifiche -->
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="successToast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="fas fa-check-circle text-success me-2"></i>
+            <strong class="me-auto">Successo</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="successToastBody">
+            Operazione completata con successo!
+        </div>
+    </div>
+</div>
+
+<div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="errorToast" class="toast" role="alert">
+        <div class="toast-header">
+            <i class="fas fa-exclamation-circle text-danger me-2"></i>
+            <strong class="me-auto">Errore</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="errorToastBody">
+            Si è verificato un errore!
+        </div>
+    </div>
+</div>
+
 @endsection
-
-// 🔍 DEBUGGING: Aggiungi questo JavaScript di test TEMPORANEAMENTE
-
-// Sostituisci la sezione @section('scripts') con questo per testare:
 
 @section('scripts')
 <script>
@@ -496,13 +423,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const action = document.getElementById('redistributeAction').value;
         
         if (!clientId || !hours || hours <= 0) {
-            alert('Compila tutti i campi richiesti');
+            showErrorMessage('Compila tutti i campi richiesti');
             return;
         }
         
         const maxHours = parseFloat(document.getElementById('redistributeMaxHours').value);
         if (parseFloat(hours) > maxHours) {
-            alert(`Non puoi redistribuire più di ${maxHours} ore`);
+            showErrorMessage(`Non puoi redistribuire più di ${maxHours} ore`);
             return;
         }
         
@@ -546,10 +473,17 @@ function updateRedistributeValue() {
     document.getElementById('redistributeValue').textContent = value.toFixed(2);
 }
 
+// 🔥 FUNZIONE PRINCIPALE CORRETTA - SENZA RELOAD
 function redistributeHours(resourceId, clientId, hours, action) {
     console.log('redistributeHours chiamata con:', {resourceId, clientId, hours, action});
     
     const date = document.getElementById('date').value;
+    
+    // Disabilita il pulsante per evitare doppi click
+    const confirmBtn = document.getElementById('confirmRedistribute');
+    const originalText = confirmBtn.innerHTML;
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Elaborando...';
     
     fetch('/daily-hours/redistribute', {
         method: 'POST',
@@ -572,65 +506,254 @@ function redistributeHours(resourceId, clientId, hours, action) {
     .then(data => {
         console.log('Response data:', data);
         if (data.success) {
-            alert(data.message);
-            updateRedistributionCounter(clientId);
-            updateClientTransferredHours(clientId, parseFloat(hours), action);
+            // Mostra messaggio di successo
+            showSuccessMessage(data.message);
             
-            setTimeout(() => {
-                window.location.reload();
-            }, 3000);
+            // 🔥 AGGIORNA DINAMICAMENTE I DATI SENZA RELOAD
+            updateResourceRemainingHours(resourceId, hours);
+            updateClientBudgetData(clientId, hours, action);
+            updateRedistributionCounter(clientId);
+            
+            // Reset del form del modal
+            document.getElementById('redistributeHours').value = '';
+            document.getElementById('redistributeValue').textContent = '0.00';
+            
         } else {
-            alert('Errore: ' + data.message);
+            showErrorMessage('Errore: ' + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Errore durante l\'operazione');
+        showErrorMessage('Errore durante l\'operazione');
+    })
+    .finally(() => {
+        // Riabilita il pulsante
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = originalText;
     });
 }
 
-function updateRedistributionCounter(clientId) {
-    console.log('updateRedistributionCounter per client:', clientId);
-    const clientCards = document.querySelectorAll('[data-client-id="' + clientId + '"]');
-    console.log('Cards trovate:', clientCards.length);
-    
-    if (clientCards.length > 0) {
-        const card = clientCards[0];
-        const redistributionElement = card.querySelector('.col-6:last-child strong');
+// 🆕 FUNZIONI PER AGGIORNAMENTO DINAMICO
+function updateResourceRemainingHours(resourceId, transferredHours) {
+    const resourceCard = document.querySelector(`[data-resource-id="${resourceId}"]`);
+    if (resourceCard) {
+        const remainingHoursElement = resourceCard.querySelector('.remaining-hours');
+        const remainingValueElement = resourceCard.querySelector('.remaining-value');
         
-        if (redistributionElement) {
-            const currentCount = parseInt(redistributionElement.textContent) || 0;
-            redistributionElement.textContent = currentCount + 1;
-            console.log('Contatore aggiornato da', currentCount, 'a', currentCount + 1);
+        if (remainingHoursElement && remainingValueElement) {
+            const currentHours = parseFloat(remainingHoursElement.textContent) || 0;
+            const newHours = Math.max(0, currentHours - parseFloat(transferredHours));
             
-            redistributionElement.style.color = '#28a745';
-            redistributionElement.style.fontWeight = 'bold';
-            redistributionElement.parentElement.style.backgroundColor = '#d4edda';
-            redistributionElement.parentElement.style.border = '1px solid #c3e6cb';
-            redistributionElement.parentElement.style.borderRadius = '4px';
-            redistributionElement.parentElement.style.padding = '2px 5px';
+            remainingHoursElement.textContent = newHours.toFixed(1);
+            
+            // Calcola nuovo valore
+            const hourlyRate = parseFloat(resourceCard.dataset.hourlyRate) || 50;
+            const newValue = newHours * hourlyRate;
+            remainingValueElement.textContent = '€' + newValue.toFixed(2);
+            
+            // Evidenzia la modifica
+            remainingHoursElement.style.backgroundColor = '#d4edda';
+            remainingValueElement.style.backgroundColor = '#d4edda';
             
             setTimeout(() => {
-                redistributionElement.style.color = '';
-                redistributionElement.parentElement.style.backgroundColor = '';
-                redistributionElement.parentElement.style.border = '';
+                remainingHoursElement.style.backgroundColor = '';
+                remainingValueElement.style.backgroundColor = '';
             }, 2000);
-        } else {
-            console.log('Element redistributionElement non trovato');
+            
+            // Se non ci sono più ore rimanenti, nascondi il pulsante "Trasferisci"
+            if (newHours <= 0) {
+                const transferBtn = resourceCard.querySelector('.transfer-btn');
+                if (transferBtn) {
+                    transferBtn.style.display = 'none';
+                }
+            }
         }
     }
 }
 
-function updateClientTransferredHours(clientId, hours, action) {
-    console.log('updateClientTransferredHours per client:', clientId, 'hours:', hours);
-    // Resto della funzione come prima...
+function updateClientBudgetData(clientId, hours, action) {
+    const clientCard = document.querySelector(`[data-client-id="${clientId}"]`);
+    if (clientCard) {
+        const budgetRemainingElement = clientCard.querySelector('.budget-remaining');
+        
+        if (budgetRemainingElement) {
+            const hourlyRate = 50; // Valore da prendere dinamicamente se disponibile
+            const transferValue = parseFloat(hours) * hourlyRate;
+            
+            const currentRemaining = parseFloat(budgetRemainingElement.textContent.replace('€', '').replace(',', '')) || 0;
+            const newRemaining = currentRemaining + transferValue; // Aggiunge sempre perché sia "return" che "transfer" aumentano il budget del cliente destinatario
+            
+            budgetRemainingElement.textContent = '€' + newRemaining.toFixed(2);
+            
+            // Evidenzia la modifica
+            budgetRemainingElement.style.backgroundColor = '#d4edda';
+            budgetRemainingElement.style.fontWeight = 'bold';
+            
+            setTimeout(() => {
+                budgetRemainingElement.style.backgroundColor = '';
+                budgetRemainingElement.style.fontWeight = '';
+            }, 3000);
+        }
+        
+        // Aggiorna le ore trasferite oggi
+        const transferredHoursElement = clientCard.querySelector('.transferred-hours');
+        if (transferredHoursElement) {
+            const currentTransferred = parseFloat(transferredHoursElement.textContent.replace('+', '').replace('h', '')) || 0;
+            const newTransferred = currentTransferred + parseFloat(hours);
+            transferredHoursElement.textContent = '+' + newTransferred.toFixed(1) + 'h';
+        }
+    }
 }
 
+function updateRedistributionCounter(clientId) {
+    console.log('updateRedistributionCounter per client:', clientId);
+    const clientCard = document.querySelector(`[data-client-id="${clientId}"]`);
+    console.log('Cards trovate:', clientCard ? 1 : 0);
+    
+    if (clientCard) {
+        // Cerca l'elemento che contiene il conteggio delle redistribuzioni
+        const redistributionElements = clientCard.querySelectorAll('.text-info');
+        
+        redistributionElements.forEach(element => {
+            if (element.parentElement.textContent.includes('Redistribuzioni:')) {
+                const currentCount = parseInt(element.textContent) || 0;
+                element.textContent = currentCount + 1;
+                console.log('Contatore aggiornato da', currentCount, 'a', currentCount + 1);
+                
+                element.style.color = '#28a745';
+                element.style.fontWeight = 'bold';
+                element.style.backgroundColor = '#d4edda';
+                element.style.borderRadius = '4px';
+                element.style.padding = '2px 5px';
+                
+                setTimeout(() => {
+                    element.style.color = '';
+                    element.style.fontWeight = '';
+                    element.style.backgroundColor = '';
+                    element.style.borderRadius = '';
+                    element.style.padding = '';
+                }, 2000);
+            }
+        });
+    }
+}
+
+// 🆕 FUNZIONI PER TOAST NOTIFICATIONS
+function showSuccessMessage(message) {
+    const toastElement = document.getElementById('successToast');
+    const toastBody = document.getElementById('successToastBody');
+    
+    toastBody.textContent = message;
+    
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+}
+
+function showErrorMessage(message) {
+    const toastElement = document.getElementById('errorToast');
+    const toastBody = document.getElementById('errorToastBody');
+    
+    toastBody.textContent = message;
+    
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+}
+
+// 🆕 FUNZIONE PER RESET FILTRI
 function resetFilters() {
     document.getElementById('date').value = '{{ Carbon\Carbon::today()->format('Y-m-d') }}';
     document.getElementById('client_id').value = '';
     document.getElementById('project_id').value = '';
     document.getElementById('filtersForm').submit();
 }
+
+// 🆕 FUNZIONE PER AGGIORNARE I PULSANTI DELLE ORE RIMANENTI
+function updateRemainingHoursButtons() {
+    // Aggiorna tutti i pulsanti "Trasferisci" con le ore rimanenti correnti
+    document.querySelectorAll('.transfer-btn').forEach(btn => {
+        const resourceCard = btn.closest('[data-resource-id]');
+        const remainingHoursElement = resourceCard.querySelector('.remaining-hours');
+        
+        if (remainingHoursElement) {
+            const remainingHours = parseFloat(remainingHoursElement.textContent) || 0;
+            btn.dataset.maxHours = remainingHours;
+            
+            if (remainingHours > 0) {
+                btn.innerHTML = `<i class="fas fa-share"></i> Trasferisci (${remainingHours.toFixed(1)}h)`;
+                btn.style.display = '';
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+    });
+    
+    // Aggiorna tutti i pulsanti "Rimetti" con le ore lavorate correnti
+    document.querySelectorAll('.redistribute-btn').forEach(btn => {
+        const clientData = btn.closest('.border');
+        // Il pulsante "Rimetti" mantiene la logica esistente
+        // Le ore sono già settate correttamente nel data-max-hours
+    });
+}
+
+// 🆕 OSSERVATORE PER AGGIORNAMENTI AUTOMATICI
+function initializeAutoUpdates() {
+    // Ogni 30 secondi, aggiorna i pulsanti con i valori correnti
+    setInterval(updateRemainingHoursButtons, 30000);
+}
+
+// 🆕 INIZIALIZZAZIONE COMPONENTI AGGIUNTIVI
+function initializeAdditionalComponents() {
+    // Inizializza tooltip se presenti
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Inizializza aggiornamenti automatici
+    initializeAutoUpdates();
+    
+    // Gestione tasti rapidi
+    document.addEventListener('keydown', function(event) {
+        // Ctrl/Cmd + R per ricaricare i dati
+        if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
+            event.preventDefault();
+            location.reload();
+        }
+        
+        // Esc per chiudere modali
+        if (event.key === 'Escape') {
+            const openModal = document.querySelector('.modal.show');
+            if (openModal) {
+                const modal = bootstrap.Modal.getInstance(openModal);
+                if (modal) modal.hide();
+            }
+        }
+    });
+}
+
+// 🆕 GESTIONE ERRORI GLOBALI
+window.addEventListener('error', function(event) {
+    console.error('Errore JavaScript:', event.error);
+    showErrorMessage('Si è verificato un errore imprevisto. Ricarica la pagina se il problema persiste.');
+});
+
+// 🆕 INIZIALIZZAZIONE FINALE
+document.addEventListener('DOMContentLoaded', function() {
+    // Inizializza componenti aggiuntivi dopo il caricamento
+    setTimeout(initializeAdditionalComponents, 100);
+});
+
+// 🆕 FUNZIONE DI DEBUG (da rimuovere in produzione)
+function debugInfo() {
+    console.log('=== DEBUG INFO ===');
+    console.log('Resources cards:', document.querySelectorAll('[data-resource-id]').length);
+    console.log('Client cards:', document.querySelectorAll('[data-client-id]').length);
+    console.log('Transfer buttons:', document.querySelectorAll('.transfer-btn').length);
+    console.log('Redistribute buttons:', document.querySelectorAll('.redistribute-btn').length);
+    console.log('==================');
+}
+
+// Esponi la funzione debug globalmente per test
+window.debugInfo = debugInfo;
 </script>
 @endsection

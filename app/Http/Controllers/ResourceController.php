@@ -99,8 +99,7 @@ class ResourceController extends Controller
         // Calcolo delle ore disponibili e utilizzate
         $resource->append([
             'standard_hours_per_year',
-            'extra_hours_per_year',
-            
+            'extra_hours_per_year',            
             'total_standard_estimated_minutes',
             'total_standard_actual_minutes',
             'total_extra_estimated_minutes',
@@ -227,111 +226,117 @@ class ResourceController extends Controller
     }
 
     /**
-     * Calculate costs based on input parameters.
-     */
-    public function calculateCosts(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'monthly_compensation' => 'required|numeric|min:0',
-            'working_days_year' => 'required|integer|min:1|max:365',
-            'working_hours_day' => 'required|numeric|min:0.5|max:24',
-            'extra_hours_day' => 'nullable|numeric|min:0|max:24',
-        ]);
+ * Calculate costs based on input parameters.
+ */
+public function calculateCosts(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'monthly_compensation' => 'required|numeric|min:0',
+        'working_days_year' => 'required|integer|min:1|max:365',
+        'working_hours_day' => 'required|numeric|min:0.5|max:24',
+        'extra_hours_day' => 'nullable|numeric|min:0|max:24',
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'errors' => $validator->errors()
+        ], 422);
+    }
 
-        // Calcolo per le ore standard
-        $yearlyCompensation = $request->monthly_compensation * 12;
-        $yearlyHours = $request->working_days_year * $request->working_hours_day;
-        $costPrice = $yearlyHours > 0 ? $yearlyCompensation / $yearlyHours : 0;
-        $sellingPrice = $this->calculateSellingPrice($costPrice);
+    // Assicurati che tutti i valori siano numerici per evitare errori toFixed
+    $monthlyCompensation = floatval($request->monthly_compensation);
+    $workingDaysYear = intval($request->working_days_year);
+    $workingHoursDay = floatval($request->working_hours_day);
+    $extraHoursDay = $request->extra_hours_day ? floatval($request->extra_hours_day) : 0;
 
-        // Calcolo per le ore extra (se specificate)
-        $extraCostPrice = null;
-        $extraSellingPrice = null;
-        
-        if ($request->has('extra_hours_day') && $request->extra_hours_day > 0) {
-            // Calcola il costo orario extra con maggiorazione del 20%
-            $extraCostPrice = $costPrice * 1.2;
-            $extraSellingPrice = $this->calculateSellingPrice($extraCostPrice);
-        }
+    // Calcolo per le ore standard
+    $yearlyCompensation = $monthlyCompensation * 12;
+    $yearlyHours = $workingDaysYear * $workingHoursDay;
+    
+    // Evita divisione per zero
+    $costPrice = $yearlyHours > 0 ? $yearlyCompensation / $yearlyHours : 0;
+    $sellingPrice = $this->calculateSellingPrice($costPrice);
 
-        $remunerationSchema = [
-            'Costo struttura' => 25,
-            'Utile gestore azienda' => 12.5,
-            'Utile IGS' => 12.5,
-            'Compenso professionista' => 20,
-            'Bonus professionista' => 5,
-            'Gestore società' => 3,
-            'Chi porta il lavoro' => 8,
-            'Network IGS' => 14
+    // Calcolo per le ore extra (se specificate)
+    $extraCostPrice = null;
+    $extraSellingPrice = null;
+    
+    if ($extraHoursDay > 0) {
+        // Calcola il costo orario extra con maggiorazione del 20%
+        $extraCostPrice = $costPrice * 1.2;
+        $extraSellingPrice = $this->calculateSellingPrice($extraCostPrice);
+    }
+
+    $remunerationSchema = [
+        'Costo struttura' => 25,
+        'Utile gestore azienda' => 12.5,
+        'Utile IGS' => 12.5,
+        'Compenso professionista' => 20,
+        'Bonus professionista' => 5,
+        'Gestore società' => 3,
+        'Chi porta il lavoro' => 8,
+        'Network IGS' => 14
+    ];
+
+    $breakdown = $this->calculateBreakdown($sellingPrice, $remunerationSchema);
+
+    $response = [
+        'success' => true,
+        // Garantisce che tutti i valori siano numerici
+        'costPrice' => round(floatval($costPrice), 2),
+        'sellingPrice' => round(floatval($sellingPrice), 2),
+        'breakdown' => $breakdown
+    ];
+    
+    // Aggiungi dati per ore extra se calcolati
+    if ($extraCostPrice !== null && $extraSellingPrice !== null) {
+        $response['extraCostPrice'] = round(floatval($extraCostPrice), 2);
+        $response['extraSellingPrice'] = round(floatval($extraSellingPrice), 2);
+    }
+
+    return response()->json($response);
+}
+
+/**
+ * Calcola il prezzo di vendita con un markup dinamico.
+ */
+private function calculateSellingPrice($costPrice)
+{
+    // Assicurati che il costo sia un numero
+    $costPrice = floatval($costPrice);
+    
+    // Markup del 80% per ottenere il prezzo base
+    $baseSellingPrice = $costPrice * 1.8;
+    
+    // Aggiungi un markup variabile in base al costo
+    if ($costPrice > 50) {
+        return $baseSellingPrice * 1.25; // 25% aggiuntivo per costi alti
+    } elseif ($costPrice > 30) {
+        return $baseSellingPrice * 1.15; // 15% aggiuntivo per costi medi
+    } else {
+        return $baseSellingPrice * 1.10; // 10% aggiuntivo per costi bassi
+    }
+}
+
+/**
+ * Calcola il breakdown della remunerazione assicurandosi che tutti i valori siano numerici.
+ */
+private function calculateBreakdown($sellingPrice, $remunerationSchema)
+{
+    $breakdown = [];
+    $sellingPrice = floatval($sellingPrice);
+    
+    foreach ($remunerationSchema as $component => $percentage) {
+        $amount = ($sellingPrice * floatval($percentage)) / 100;
+        $breakdown[$component] = [
+            'percentage' => floatval($percentage),
+            'amount' => round($amount, 2)
         ];
-
-        $breakdown = $this->calculateBreakdown($sellingPrice, $remunerationSchema);
-
-        $response = [
-            'success' => true,
-            'costPrice' => round($costPrice, 2),
-            'sellingPrice' => round($sellingPrice, 2),
-            'breakdown' => $breakdown
-        ];
-        
-        // Aggiungi dati per ore extra se calcolati
-        if ($extraCostPrice !== null && $extraSellingPrice !== null) {
-            $response['extraCostPrice'] = round($extraCostPrice, 2);
-            $response['extraSellingPrice'] = round($extraSellingPrice, 2);
-        }
-
-        return response()->json($response);
     }
-
-    /**
-     * Calcola il prezzo di vendita con un markup dinamico.
-     */
-    private function calculateSellingPrice($costPrice)
-    {
-        // Markup del 80% per ottenere il prezzo base
-        $baseSellingPrice = $costPrice * 1.8;
-        
-        // Aggiungi un markup variabile in base al costo
-        if ($costPrice > 50) {
-            return $baseSellingPrice * 1.25; // 25% aggiuntivo per costi alti
-        } elseif ($costPrice > 30) {
-            return $baseSellingPrice * 1.15; // 15% aggiuntivo per costi medi
-        } else {
-            return $baseSellingPrice * 1.10; // 10% aggiuntivo per costi bassi
-        }
-    }
-
-    /**
-     * Calcola il breakdown della remunerazione.
-     */
-    private function calculateBreakdown($sellingPrice, $schema)
-    {
-        $breakdown = [];
-        $remaining = $sellingPrice;
-        
-        foreach ($schema as $category => $percentage) {
-            $amount = $sellingPrice * ($percentage / 100);
-            $breakdown[$category] = [
-                'percentage' => $percentage,
-                'amount' => round($amount, 2)
-            ];
-            $remaining -= $amount;
-        }
-        
-        // Il residuo va al compenso del professionista
-        if (isset($breakdown['Compenso professionista'])) {
-            $breakdown['Compenso professionista']['amount'] += round($remaining, 2);
-        }
-        
-        return $breakdown;
-    }
+    
+    return $breakdown;
+}
 
     // ============================================
     // METODI PER LA GESTIONE DEL TESORETTO

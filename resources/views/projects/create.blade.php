@@ -71,29 +71,16 @@
                 </div>
                 
                 <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="status">Stato</label>
-                        <select id="status" name="status" class="form-select @error('status') is-invalid @enderror">
-                            <option value="pending" {{ old('status') == 'pending' ? 'selected' : '' }}>In attesa</option>
-                            <option value="in_progress" {{ old('status') == 'in_progress' ? 'selected' : '' }}>In corso</option>
-                            <option value="completed" {{ old('status') == 'completed' ? 'selected' : '' }}>Completato</option>
-                            <option value="on_hold" {{ old('status') == 'on_hold' ? 'selected' : '' }}>In pausa</option>
-                        </select>
-                        @error('status')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label>Tipo Ore Predefinito per Attività</label>
-                        <div class="form-check mt-2">
-                            <input class="form-check-input" type="radio" name="default_hours_type" id="defaultHoursTypeStandard" value="standard" checked>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">Tipo di Ore di Default</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="default_hours_type" id="defaultHoursTypeStandard" value="standard" {{ old('default_hours_type', 'standard') == 'standard' ? 'checked' : '' }}>
                             <label class="form-check-label" for="defaultHoursTypeStandard">
                                 Standard - Scala dalle ore lavorative standard delle risorse
                             </label>
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="default_hours_type" id="defaultHoursTypeExtra" value="extra">
+                            <input class="form-check-input" type="radio" name="default_hours_type" id="defaultHoursTypeExtra" value="extra" {{ old('default_hours_type') == 'extra' ? 'checked' : '' }}>
                             <label class="form-check-label" for="defaultHoursTypeExtra">
                                 Extra - Scala dalle ore extra delle risorse
                             </label>
@@ -187,28 +174,31 @@
                                     <div class="mt-2">
                                         <p class="mb-1">Prezzo di Costo: {{ number_format($resource->cost_price, 2) }} €/h</p>
                                         <p class="mb-1">Prezzo di Vendita: {{ number_format($resource->selling_price, 2) }} €/h</p>
-                                        <p class="mb-1">Ore Standard Disponibili: {{ number_format($resource->standard_hours_per_year, 2) }}</p>
-                                        <p class="mb-1">Ore Extra Disponibili: {{ number_format($resource->extra_hours_per_year, 2) }}</p>
+                                        @if($resource->extra_selling_price)
+                                            <p class="mb-1">Prezzo Extra: {{ number_format($resource->extra_selling_price, 2) }} €/h</p>
+                                        @endif
                                     </div>
                                 </div>
-                                <div class="col-md-6 resource-hours" style="display: none;">
-                                    <div class="form-group mb-3">
-                                        <label>Ore Standard:</label>
-                                        <input type="number" 
-                                               name="resource_standard_hours[{{ $resource->id }}]" 
-                                               class="form-control resource-hours-input" 
-                                               min="0" 
-                                               value="0" 
-                                               step="0.5">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Ore Extra:</label>
-                                        <input type="number" 
-                                               name="resource_extra_hours[{{ $resource->id }}]" 
-                                               class="form-control resource-extra-hours-input" 
-                                               min="0" 
-                                               value="0" 
-                                               step="0.5">
+                                <div class="col-md-6">
+                                    <div class="resource-hours" style="display: none;">
+                                        <div class="form-group mb-3">
+                                            <label>Ore Standard:</label>
+                                            <input type="number" 
+                                                   name="resource_standard_hours[{{ $resource->id }}]" 
+                                                   class="form-control resource-standard-hours-input" 
+                                                   min="0" 
+                                                   value="0" 
+                                                   step="0.5">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Ore Extra:</label>
+                                            <input type="number" 
+                                                   name="resource_extra_hours[{{ $resource->id }}]" 
+                                                   class="form-control resource-extra-hours-input" 
+                                                   min="0" 
+                                                   value="0" 
+                                                   step="0.5">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -222,11 +212,11 @@
                         <h5>Riepilogo Costi</h5>
                     </div>
                     <div class="card-body">
-                    <div id="resourceCostDetails">
+                        <div id="resourceCostDetails">
                             <!-- Dettagli costi risorse -->
                         </div>
                         <div class="mt-3">
-                            <h6>Totale Costo Progetto: <span id="totalProjectCost">0.00</span> €</h6>
+                            <h6>Totale Costo Progetto: <span id="totalProjectCost">0.00 €</span></h6>
                         </div>
                     </div>
                 </div>
@@ -253,6 +243,18 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Funzione helper per convertire valori in numeri sicuri
+        function safeNumber(value, defaultValue = 0) {
+            const num = parseFloat(value);
+            return isNaN(num) ? defaultValue : num;
+        }
+
+        // Funzione helper per formattare numeri con toFixed sicuro
+        function safeToFixed(value, decimals = 2) {
+            const num = safeNumber(value, 0);
+            return num.toFixed(decimals);
+        }
+
         // Toggle visualizzazione ore risorse
         const resourceCheckboxes = document.querySelectorAll('.resource-checkbox');
         resourceCheckboxes.forEach(checkbox => {
@@ -264,8 +266,8 @@
                     hoursContainer.style.display = 'block';
                 } else {
                     hoursContainer.style.display = 'none';
-                    const standardHoursInput = hoursContainer.querySelector('input[name^="resource_standard_hours"]');
-                    const extraHoursInput = hoursContainer.querySelector('input[name^="resource_extra_hours"]');
+                    const standardHoursInput = hoursContainer.querySelector('.resource-standard-hours-input');
+                    const extraHoursInput = hoursContainer.querySelector('.resource-extra-hours-input');
                     standardHoursInput.value = 0;
                     extraHoursInput.value = 0;
                 }
@@ -325,30 +327,38 @@
             const totalProjectCost = document.getElementById('totalProjectCost');
             
             let detailsHtml = '';
-            data.summary.forEach(item => {
-                const standardHoursText = item.standard_hours > 0 ? 
-                    `${item.standard_hours}h standard x ${item.standard_adjusted_rate.toFixed(2)}€/h = ${(item.standard_hours * item.standard_adjusted_rate).toFixed(2)}€<br>` : '';
-                const extraHoursText = item.extra_hours > 0 ? 
-                    `${item.extra_hours}h extra x ${item.extra_adjusted_rate.toFixed(2)}€/h = ${(item.extra_hours * item.extra_adjusted_rate).toFixed(2)}€` : '';
-                
-                detailsHtml += `
-                    <div class="resource-cost-item mb-3 p-2 border-bottom">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <strong>${item.name}</strong> (${item.role})
-                            </div>
-                            <div class="col-md-6 text-end">
-                                ${standardHoursText}
-                                ${extraHoursText}
-                                <strong>Totale: ${item.total_cost.toFixed(2)}€</strong>
+            
+            if (data.summary && Array.isArray(data.summary)) {
+                data.summary.forEach(item => {
+                    const standardHoursText = safeNumber(item.standard_hours, 0) > 0 ? 
+                        `${safeNumber(item.standard_hours, 0)}h standard x ${safeToFixed(item.standard_adjusted_rate, 2)}€/h = ${safeToFixed((safeNumber(item.standard_hours, 0) * safeNumber(item.standard_adjusted_rate, 0)), 2)}€<br>` : '';
+                    const extraHoursText = safeNumber(item.extra_hours, 0) > 0 ? 
+                        `${safeNumber(item.extra_hours, 0)}h extra x ${safeToFixed(item.extra_adjusted_rate, 2)}€/h = ${safeToFixed((safeNumber(item.extra_hours, 0) * safeNumber(item.extra_adjusted_rate, 0)), 2)}€` : '';
+                    
+                    detailsHtml += `
+                        <div class="resource-cost-item mb-3 p-2 border-bottom">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>${item.name || 'N/D'}</strong> (${item.role || 'N/D'})
+                                </div>
+                                <div class="col-md-6 text-end">
+                                    ${standardHoursText}
+                                    ${extraHoursText}
+                                    <strong>Totale: ${safeToFixed(item.total_cost, 2)}€</strong>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-            });
+                    `;
+                });
+            }
             
-            resourceCostDetails.innerHTML = detailsHtml || '<p>Nessuna risorsa selezionata o ore specificate.</p>';
-            totalProjectCost.textContent = data.total_cost.toFixed(2);
+            if (resourceCostDetails) {
+                resourceCostDetails.innerHTML = detailsHtml || '<p>Nessuna risorsa selezionata o ore specificate.</p>';
+            }
+            
+            if (totalProjectCost) {
+                totalProjectCost.textContent = `${safeToFixed(data.total_cost, 2)} €`;
+            }
         }
     });
 </script>

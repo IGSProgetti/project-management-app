@@ -73,7 +73,7 @@
                 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="status">Stato</label>
+                        <label for="status">Stato del Progetto</label>
                         <select id="status" name="status" class="form-select @error('status') is-invalid @enderror">
                             <option value="pending" {{ old('status', $project->status) == 'pending' ? 'selected' : '' }}>In attesa</option>
                             <option value="in_progress" {{ old('status', $project->status) == 'in_progress' ? 'selected' : '' }}>In corso</option>
@@ -84,10 +84,10 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-
+                    
                     <div class="col-md-6 mb-3">
-                        <label>Tipo Ore Predefinito per Attività</label>
-                        <div class="form-check mt-2">
+                        <label class="form-label">Tipo di Ore di Default</label>
+                        <div class="form-check">
                             <input class="form-check-input" type="radio" name="default_hours_type" id="defaultHoursTypeStandard" value="standard" {{ old('default_hours_type', $project->default_hours_type) == 'standard' ? 'checked' : '' }}>
                             <label class="form-check-label" for="defaultHoursTypeStandard">
                                 Standard - Scala dalle ore lavorative standard delle risorse
@@ -179,10 +179,14 @@
                 <div id="resourcesList" class="mb-4">
                     @foreach($resources as $resource)
                     @php
-                        $projectResource = $project->resources->firstWhere('id', $resource->id);
-                        $isSelected = $projectResource !== null;
-                        $standardHours = $isSelected ? ($projectResource->pivot->hours_type == 'standard' ? $projectResource->pivot->hours : 0) : 0;
-                        $extraHours = $isSelected ? ($projectResource->pivot->hours_type == 'extra' ? $projectResource->pivot->hours : 0) : 0;
+                        // Controlla se la risorsa è già associata al progetto
+                        $standardResource = $project->resources()->where('resources.id', $resource->id)->wherePivot('hours_type', 'standard')->first();
+                        $extraResource = $project->resources()->where('resources.id', $resource->id)->wherePivot('hours_type', 'extra')->first();
+                        
+                        $standardHours = $standardResource ? $standardResource->pivot->hours : 0;
+                        $extraHours = $extraResource ? $extraResource->pivot->hours : 0;
+                        
+                        $isAssigned = $standardHours > 0 || $extraHours > 0;
                     @endphp
                     <div class="card resource-item mb-3">
                         <div class="card-body">
@@ -193,7 +197,7 @@
                                                id="resource{{ $resource->id }}" 
                                                name="resources[]" 
                                                value="{{ $resource->id }}"
-                                               {{ $isSelected ? 'checked' : '' }}>
+                                               {{ $isAssigned ? 'checked' : '' }}>
                                         <label class="form-check-label" for="resource{{ $resource->id }}">
                                             <strong>{{ $resource->name }}</strong> - {{ $resource->role }}
                                         </label>
@@ -201,28 +205,31 @@
                                     <div class="mt-2">
                                         <p class="mb-1">Prezzo di Costo: {{ number_format($resource->cost_price, 2) }} €/h</p>
                                         <p class="mb-1">Prezzo di Vendita: {{ number_format($resource->selling_price, 2) }} €/h</p>
-                                        <p class="mb-1">Ore Standard Disponibili: {{ number_format($resource->standard_hours_per_year, 2) }}</p>
-                                        <p class="mb-1">Ore Extra Disponibili: {{ number_format($resource->extra_hours_per_year, 2) }}</p>
+                                        @if($resource->extra_selling_price)
+                                            <p class="mb-1">Prezzo Extra: {{ number_format($resource->extra_selling_price, 2) }} €/h</p>
+                                        @endif
                                     </div>
                                 </div>
-                                <div class="col-md-6 resource-hours" style="display: {{ $isSelected ? 'block' : 'none' }};">
-                                    <div class="form-group mb-3">
-                                        <label>Ore Standard:</label>
-                                        <input type="number" 
-                                               name="resource_standard_hours[{{ $resource->id }}]" 
-                                               class="form-control resource-standard-hours-input" 
-                                               min="0" 
-                                               value="{{ $standardHours }}" 
-                                               step="0.5">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Ore Extra:</label>
-                                        <input type="number" 
-                                               name="resource_extra_hours[{{ $resource->id }}]" 
-                                               class="form-control resource-extra-hours-input" 
-                                               min="0" 
-                                               value="{{ $extraHours }}" 
-                                               step="0.5">
+                                <div class="col-md-6">
+                                    <div class="resource-hours" style="display: {{ $isAssigned ? 'block' : 'none' }};">
+                                        <div class="form-group mb-3">
+                                            <label>Ore Standard:</label>
+                                            <input type="number" 
+                                                   name="resource_standard_hours[{{ $resource->id }}]" 
+                                                   class="form-control resource-standard-hours-input" 
+                                                   min="0" 
+                                                   value="{{ $standardHours }}" 
+                                                   step="0.5">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Ore Extra:</label>
+                                            <input type="number" 
+                                                   name="resource_extra_hours[{{ $resource->id }}]" 
+                                                   class="form-control resource-extra-hours-input" 
+                                                   min="0" 
+                                                   value="{{ $extraHours }}" 
+                                                   step="0.5">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -267,6 +274,18 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Funzione helper per convertire valori in numeri sicuri
+        function safeNumber(value, defaultValue = 0) {
+            const num = parseFloat(value);
+            return isNaN(num) ? defaultValue : num;
+        }
+
+        // Funzione helper per formattare numeri con toFixed sicuro
+        function safeToFixed(value, decimals = 2) {
+            const num = safeNumber(value, 0);
+            return num.toFixed(decimals);
+        }
+
         // Toggle visualizzazione ore risorse
         const resourceCheckboxes = document.querySelectorAll('.resource-checkbox');
         resourceCheckboxes.forEach(checkbox => {
@@ -290,9 +309,6 @@
         document.getElementById('calculateCostsBtn').addEventListener('click', function() {
             calculateProjectCosts();
         });
-
-        // Inizializza con i dati esistenti
-        calculateProjectCosts();
 
         // Calcola costi progetto
         function calculateProjectCosts() {
@@ -342,30 +358,38 @@
             const totalProjectCost = document.getElementById('totalProjectCost');
             
             let detailsHtml = '';
-            data.summary.forEach(item => {
-                const standardHoursText = item.standard_hours > 0 ? 
-                    `${item.standard_hours}h standard x ${item.standard_adjusted_rate.toFixed(2)}€/h = ${(item.standard_hours * item.standard_adjusted_rate).toFixed(2)}€<br>` : '';
-                const extraHoursText = item.extra_hours > 0 ? 
-                    `${item.extra_hours}h extra x ${item.extra_adjusted_rate.toFixed(2)}€/h = ${(item.extra_hours * item.extra_adjusted_rate).toFixed(2)}€` : '';
-                
-                detailsHtml += `
-                    <div class="resource-cost-item mb-3 p-2 border-bottom">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <strong>${item.name}</strong> (${item.role})
-                            </div>
-                            <div class="col-md-6 text-end">
-                                ${standardHoursText}
-                                ${extraHoursText}
-                                <strong>Totale: ${item.total_cost.toFixed(2)}€</strong>
+            
+            if (data.summary && Array.isArray(data.summary)) {
+                data.summary.forEach(item => {
+                    const standardHoursText = safeNumber(item.standard_hours, 0) > 0 ? 
+                        `${safeNumber(item.standard_hours, 0)}h standard x ${safeToFixed(item.standard_adjusted_rate, 2)}€/h = ${safeToFixed((safeNumber(item.standard_hours, 0) * safeNumber(item.standard_adjusted_rate, 0)), 2)}€<br>` : '';
+                    const extraHoursText = safeNumber(item.extra_hours, 0) > 0 ? 
+                        `${safeNumber(item.extra_hours, 0)}h extra x ${safeToFixed(item.extra_adjusted_rate, 2)}€/h = ${safeToFixed((safeNumber(item.extra_hours, 0) * safeNumber(item.extra_adjusted_rate, 0)), 2)}€` : '';
+                    
+                    detailsHtml += `
+                        <div class="resource-cost-item mb-3 p-2 border-bottom">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>${item.name || 'N/D'}</strong> (${item.role || 'N/D'})
+                                </div>
+                                <div class="col-md-6 text-end">
+                                    ${standardHoursText}
+                                    ${extraHoursText}
+                                    <strong>Totale: ${safeToFixed(item.total_cost, 2)}€</strong>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-            });
+                    `;
+                });
+            }
             
-            resourceCostDetails.innerHTML = detailsHtml || '<p>Nessuna risorsa selezionata o ore specificate.</p>';
-            totalProjectCost.textContent = data.total_cost.toFixed(2);
+            if (resourceCostDetails) {
+                resourceCostDetails.innerHTML = detailsHtml || '<p>Nessuna risorsa selezionata o ore specificate.</p>';
+            }
+            
+            if (totalProjectCost) {
+                totalProjectCost.textContent = `${safeToFixed(data.total_cost, 2)} €`;
+            }
         }
     });
 </script>
