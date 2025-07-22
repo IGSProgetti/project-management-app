@@ -117,3 +117,27 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::delete('/daily-hours/redistribution/{id}', [DailyHoursController::class, 'undoRedistribution'])
           ->name('daily-hours.undo-redistribution');
 });
+
+// Rotte per la gestione tesoretto nelle risorse
+Route::get('/resources/{resource}/treasure', [ResourceController::class, 'getTreasureInfo'])
+    ->name('resources.treasure.info');
+
+Route::put('/resources/{resource}/treasure', [ResourceController::class, 'updateTreasure'])
+    ->name('resources.treasure.update');
+
+// Dashboard tesoretto (opzionale)
+Route::get('/treasure/dashboard', function () {
+    return view('treasure.dashboard');
+})->name('treasure.dashboard');
+
+// Rotte per la gestione tesoretto nelle risorse
+Route::get('/resources/{resource}/treasure', [ResourceController::class, 'getTreasureInfo'])
+    ->name('resources.treasure.info');
+
+Route::put('/resources/{resource}/treasure', [ResourceController::class, 'updateTreasure'])
+    ->name('resources.treasure.update');
+
+// Dashboard tesoretto (opzionale)
+Route::get('/treasure/dashboard', function () {
+    return view('treasure.dashboard');
+})->name('treasure.dashboard');

@@ -53,6 +53,74 @@
                         @enderror
                     </div>
                 </div>
+
+                <!-- SEZIONE TESORETTO - INIZIO -->
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <h4 class="text-primary">
+                            <i class="fas fa-treasure-chest"></i> Gestione Tesoretto Ore
+                        </h4>
+                        <p class="text-muted">Il tesoretto rappresenta ore aggiuntive che possono essere allocate ai progetti, separate dalle ore standard ed extra.</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="treasure_days">Giorni Tesoretto</label>
+                        <input type="number" id="treasure_days" name="treasure_days" class="form-control @error('treasure_days') is-invalid @enderror" value="{{ old('treasure_days', $resource->treasure_days ?? 0) }}" min="0">
+                        @error('treasure_days')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="treasure_hours_per_day">Ore Tesoretto/Giorno</label>
+                        <input type="number" step="0.1" id="treasure_hours_per_day" name="treasure_hours_per_day" class="form-control @error('treasure_hours_per_day') is-invalid @enderror" value="{{ old('treasure_hours_per_day', $resource->treasure_hours_per_day ?? 0) }}" min="0">
+                        @error('treasure_hours_per_day')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label for="treasure_total_calculated">Totale Ore Tesoretto</label>
+                        <input type="text" id="treasure_total_calculated" class="form-control bg-light" value="{{ $resource->treasure_total_hours ?? 0 }}" readonly>
+                        <small class="text-muted">Calcolato automaticamente: Giorni × Ore/Giorno</small>
+                    </div>
+                </div>
+                
+                @if($resource->treasure_total_hours > 0)
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6><i class="fas fa-info-circle"></i> Stato Attuale Tesoretto</h6>
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <strong>Totale:</strong> {{ number_format($resource->treasure_total_hours, 1) }} ore
+                                    </div>
+                                    <div class="col-md-3">
+                                        <strong>Disponibili:</strong> {{ number_format($resource->treasure_available_hours, 1) }} ore
+                                    </div>
+                                    <div class="col-md-3">
+                                        <strong>Allocate:</strong> {{ number_format($resource->treasure_total_hours - $resource->treasure_available_hours, 1) }} ore
+                                    </div>
+                                    <div class="col-md-3">
+                                        <strong>Utilizzo:</strong> {{ $resource->treasure_usage_percentage ?? 0 }}%
+                                    </div>
+                                </div>
+                                
+                                @if(($resource->treasure_usage_percentage ?? 0) > 0)
+                                <div class="progress mt-2" style="height: 10px;">
+                                    <div class="progress-bar {{ ($resource->treasure_usage_percentage ?? 0) > 80 ? 'bg-warning' : 'bg-success' }}" 
+                                         style="width: {{ $resource->treasure_usage_percentage ?? 0 }}%"></div>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+                <!-- SEZIONE TESORETTO - FINE -->
                 
                 <div class="row">
                     <div class="col-md-12 mb-3">
@@ -92,6 +160,52 @@
                 </div>
                 
                 <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <h4>Calcolo Costi</h4>
+                        <p class="text-muted">Utilizza questo strumento per calcolare automaticamente i costi orari basati sul compenso e sui giorni lavorativi.</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <button type="button" id="calculateCostsBtn" class="btn btn-info">
+                            <i class="fas fa-calculator"></i> Calcola Costi Automaticamente
+                        </button>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <button type="button" id="fixLegacyDataBtn" class="btn btn-warning">
+                            <i class="fas fa-wrench"></i> Ripara Dati Legacy
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Sezione risultati calcolo costi -->
+                <div id="resultsSection" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <h5>Risultati Calcolo Costi</h5>
+                            <div id="costResults"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <h5>Breakdown Remunerazione</h5>
+                            <table class="table table-striped" id="breakdownTable">
+                                <thead>
+                                    <tr>
+                                        <th>Componente</th>
+                                        <th>Percentuale</th>
+                                        <th>Importo</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <h4>Costi Orari</h4>
+                    </div>
                     <div class="col-md-3 mb-3">
                         <label for="cost_price">Prezzo di Costo (€/h)</label>
                         <input type="number" id="cost_price" name="cost_price" class="form-control @error('cost_price') is-invalid @enderror" value="{{ old('cost_price', $resource->cost_price) }}" min="0" step="0.01" required>
@@ -127,97 +241,22 @@
                 
                 <div class="row">
                     <div class="col-md-12 mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="1" id="is_active" name="is_active" {{ old('is_active', $resource->is_active) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="is_active">
-                                Risorsa attiva
-                            </label>
-                        </div>
+                        <label for="remuneration_breakdown">Breakdown Remunerazione (JSON)</label>
+                        <textarea id="remuneration_breakdown" name="remuneration_breakdown" class="form-control @error('remuneration_breakdown') is-invalid @enderror" rows="4" required>{{ old('remuneration_breakdown', json_encode($resource->remuneration_breakdown, JSON_PRETTY_PRINT)) }}</textarea>
+                        @error('remuneration_breakdown')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
                 
                 <div class="row">
                     <div class="col-md-12 mb-3">
-                        <button type="button" id="calculateCostsBtn" class="btn btn-info">
-                            Ricalcola Costi
-                        </button>
-                        <button type="button" id="fixLegacyDataBtn" class="btn btn-warning ms-2">
-                            Ripara Dati Ore Legacy
-                        </button>
-                    </div>
-                </div>
-                
-                <div id="resultsSection" style="display: none;">
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h3>Risultati Calcolo Costi</h3>
+                        <div class="form-check">
+                            <input type="checkbox" id="is_active" name="is_active" class="form-check-input" value="1" {{ old('is_active', $resource->is_active) ? 'checked' : '' }}>
+                            <label for="is_active" class="form-check-label">Risorsa Attiva</label>
                         </div>
-                        <div class="card-body">
-                            <div id="costResults" class="mb-4"></div>
-                            
-                            <h4>Schema Remunerativo</h4>
-                            <div class="table-responsive">
-                                <table class="table" id="breakdownTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Componente</th>
-                                            <th>Percentuale</th>
-                                            <th>Valore (€/h)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Campi nascosti per l'invio dei dati calcolati -->
-                            <input type="hidden" id="remuneration_breakdown" name="remuneration_breakdown" value="{{ old('remuneration_breakdown', json_encode($resource->remuneration_breakdown)) }}">
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Sezione Progetti con Ore Allocate -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h3>Ore Allocate nei Progetti</h3>
-                    </div>
-                    <div class="card-body">
-                        @if($resource->projects->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Progetto</th>
-                                            <th>Cliente</th>
-                                            <th>Tipo Ore</th>
-                                            <th>Ore Allocate</th>
-                                            <th>Tariffa</th>
-                                            <th>Costo</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($resource->projects as $project)
-                                        <tr>
-                                            <td>{{ $project->name }}</td>
-                                            <td>{{ $project->client->name }}</td>
-                                            <td>
-                                                @if($project->pivot->hours_type == 'standard')
-                                                    <span class="badge bg-primary">Standard</span>
-                                                @elseif($project->pivot->hours_type == 'extra')
-                                                    <span class="badge bg-warning">Extra</span>
-                                                @endif
-                                            </td>
-                                            <td>{{ $project->pivot->hours }}</td>
-                                            <td>{{ number_format($project->pivot->adjusted_rate, 2) }} €/h</td>
-                                            <td>{{ number_format($project->pivot->cost, 2) }} €</td>
-                                        </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @else
-                            <div class="alert alert-info">
-                                Questa risorsa non è ancora assegnata a nessun progetto.
-                            </div>
+                        @if($errors->has('is_active'))
+                            <div class="text-danger">{{ $errors->first('is_active') }}</div>
                         @endif
                     </div>
                 </div>
@@ -237,30 +276,68 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // ===============================
+        // FUNZIONALITÀ TESORETTO - INIZIO
+        // ===============================
+        
+        // Calcolo automatico del tesoretto totale
+        const treasureDaysInput = document.getElementById('treasure_days');
+        const treasureHoursPerDayInput = document.getElementById('treasure_hours_per_day');
+        const treasureTotalInput = document.getElementById('treasure_total_calculated');
+        
+        function calculateTreasureTotal() {
+            const days = parseFloat(treasureDaysInput.value) || 0;
+            const hoursPerDay = parseFloat(treasureHoursPerDayInput.value) || 0;
+            const total = days * hoursPerDay;
+            treasureTotalInput.value = total.toFixed(1) + ' ore';
+        }
+        
+        if (treasureDaysInput && treasureHoursPerDayInput && treasureTotalInput) {
+            treasureDaysInput.addEventListener('input', calculateTreasureTotal);
+            treasureHoursPerDayInput.addEventListener('input', calculateTreasureTotal);
+            
+            // Calcolo iniziale
+            calculateTreasureTotal();
+        }
+        
+        // ===============================
+        // FUNZIONALITÀ TESORETTO - FINE
+        // ===============================
+        
+        // ===============================
+        // FUNZIONALITÀ ORIGINALI - INIZIO
+        // ===============================
+        
         // Calcolo dei costi al click del pulsante
-        document.getElementById('calculateCostsBtn').addEventListener('click', function() {
-            const monthlyCompensation = parseFloat(document.getElementById('monthly_compensation').value) || 0;
-            const workingDaysYear = parseInt(document.getElementById('working_days_year').value) || 0;
-            const workingHoursDay = parseFloat(document.getElementById('working_hours_day').value) || 0;
-            const extraHoursDay = parseFloat(document.getElementById('extra_hours_day').value) || 0;
+        const calculateCostsBtn = document.getElementById('calculateCostsBtn');
+        if (calculateCostsBtn) {
+            calculateCostsBtn.addEventListener('click', function() {
+                const monthlyCompensation = parseFloat(document.getElementById('monthly_compensation').value) || 0;
+                const workingDaysYear = parseInt(document.getElementById('working_days_year').value) || 0;
+                const workingHoursDay = parseFloat(document.getElementById('working_hours_day').value) || 0;
+                const extraHoursDay = parseFloat(document.getElementById('extra_hours_day').value) || 0;
 
-            if (validateFormData(monthlyCompensation, workingDaysYear, workingHoursDay)) {
-                // Calcolo costo e prezzo standard
-                calculateStandardRates(monthlyCompensation, workingDaysYear, workingHoursDay);
-                
-                // Calcolo costo e prezzo extra se specificato
-                if (extraHoursDay > 0) {
-                    calculateExtraRates(monthlyCompensation, workingDaysYear, extraHoursDay);
+                if (validateFormData(monthlyCompensation, workingDaysYear, workingHoursDay)) {
+                    // Calcolo costo e prezzo standard
+                    calculateStandardRates(monthlyCompensation, workingDaysYear, workingHoursDay);
+                    
+                    // Calcolo costo e prezzo extra se specificato
+                    if (extraHoursDay > 0) {
+                        calculateExtraRates(monthlyCompensation, workingDaysYear, extraHoursDay);
+                    }
                 }
-            }
-        });
+            });
+        }
 
         // Pulsante per riparare dati legacy
-        document.getElementById('fixLegacyDataBtn').addEventListener('click', function() {
-            if (confirm('Questa operazione convertirà i dati dalle ore extra (extra_hours) al nuovo formato che utilizza record separati (hours_type). Vuoi procedere?')) {
-                fixLegacyData();
-            }
-        });
+        const fixLegacyDataBtn = document.getElementById('fixLegacyDataBtn');
+        if (fixLegacyDataBtn) {
+            fixLegacyDataBtn.addEventListener('click', function() {
+                if (confirm('Questa operazione convertirà i dati dalle ore extra (extra_hours) al nuovo formato che utilizza record separati (hours_type). Vuoi procedere?')) {
+                    fixLegacyData();
+                }
+            });
+        }
 
         function fixLegacyData() {
             fetch('{{ route("resources.fix-legacy-hours", $resource->id) }}', {
@@ -323,12 +400,19 @@
             .then(data => {
                 if (data.success) {
                     displayResults(data);
-                    document.getElementById('resultsSection').style.display = 'block';
+                    const resultsSection = document.getElementById('resultsSection');
+                    if (resultsSection) {
+                        resultsSection.style.display = 'block';
+                    }
                     
                     // Imposta i valori nei campi
-                    document.getElementById('cost_price').value = data.costPrice;
-                    document.getElementById('selling_price').value = data.sellingPrice;
-                    document.getElementById('remuneration_breakdown').value = JSON.stringify(data.breakdown);
+                    const costPriceField = document.getElementById('cost_price');
+                    const sellingPriceField = document.getElementById('selling_price');
+                    const remunerationField = document.getElementById('remuneration_breakdown');
+                    
+                    if (costPriceField) costPriceField.value = data.costPrice;
+                    if (sellingPriceField) sellingPriceField.value = data.sellingPrice;
+                    if (remunerationField) remunerationField.value = JSON.stringify(data.breakdown);
                 } else {
                     alert('Errore nel calcolo dei costi: ' + JSON.stringify(data.errors));
                 }
@@ -350,43 +434,55 @@
             const extraSellingPrice = (extraHourlyRate * 100) / 20;
             
             // Imposta i valori nei campi nascosti
-            document.getElementById('extra_cost_price').value = extraHourlyRate.toFixed(2);
-            document.getElementById('extra_selling_price').value = extraSellingPrice.toFixed(2);
+            const extraCostField = document.getElementById('extra_cost_price');
+            const extraSellingField = document.getElementById('extra_selling_price');
+            
+            if (extraCostField) extraCostField.value = extraHourlyRate.toFixed(2);
+            if (extraSellingField) extraSellingField.value = extraSellingPrice.toFixed(2);
             
             // Aggiungi informazioni sui costi extra nel riepilogo
             const costResults = document.getElementById('costResults');
-            const extraCostInfo = document.createElement('div');
-            extraCostInfo.classList.add('mt-3');
-            extraCostInfo.innerHTML = `
-                <h5>Costi Ore Extra:</h5>
-                <p><strong>Prezzo di Costo Extra:</strong> ${extraHourlyRate.toFixed(2)} €/h</p>
-                <p><strong>Costo Orario di Vendita Extra:</strong> ${extraSellingPrice.toFixed(2)} €/h</p>
-            `;
-            costResults.appendChild(extraCostInfo);
+            if (costResults) {
+                const extraCostInfo = document.createElement('div');
+                extraCostInfo.classList.add('mt-3');
+                extraCostInfo.innerHTML = `
+                    <h5>Costi Ore Extra:</h5>
+                    <p><strong>Prezzo di Costo Extra:</strong> ${extraHourlyRate.toFixed(2)} €/h</p>
+                    <p><strong>Costo Orario di Vendita Extra:</strong> ${extraSellingPrice.toFixed(2)} €/h</p>
+                `;
+                costResults.appendChild(extraCostInfo);
+            }
         }
 
         function displayResults(data) {
             const costResults = document.getElementById('costResults');
-            costResults.innerHTML = `
-                <h5>Costi Ore Standard:</h5>
-                <p><strong>Prezzo di Costo:</strong> ${data.costPrice.toFixed(2)} €/h</p>
-                <p><strong>Costo Orario di Vendita:</strong> ${data.sellingPrice.toFixed(2)} €/h</p>
-            `;
+            if (costResults) {
+                costResults.innerHTML = `
+                    <h5>Costi Ore Standard:</h5>
+                    <p><strong>Prezzo di Costo:</strong> ${data.costPrice.toFixed(2)} €/h</p>
+                    <p><strong>Costo Orario di Vendita:</strong> ${data.sellingPrice.toFixed(2)} €/h</p>
+                `;
+            }
 
-            const breakdownTable = document.getElementById('breakdownTable').getElementsByTagName('tbody')[0];
-            breakdownTable.innerHTML = '';
+            const breakdownTable = document.getElementById('breakdownTable');
+            if (breakdownTable) {
+                const tbody = breakdownTable.getElementsByTagName('tbody')[0];
+                if (tbody) {
+                    tbody.innerHTML = '';
 
-            for (const [component, value] of Object.entries(data.breakdown)) {
-                const percentage = getPercentageByComponent(component);
-                const row = breakdownTable.insertRow();
-                
-                const cell1 = row.insertCell(0);
-                const cell2 = row.insertCell(1);
-                const cell3 = row.insertCell(2);
-                
-                cell1.innerHTML = component;
-                cell2.innerHTML = `${percentage}%`;
-                cell3.innerHTML = `${value.toFixed(2)} €`;
+                    for (const [component, value] of Object.entries(data.breakdown)) {
+                        const percentage = getPercentageByComponent(component);
+                        const row = tbody.insertRow();
+                        
+                        const cell1 = row.insertCell(0);
+                        const cell2 = row.insertCell(1);
+                        const cell3 = row.insertCell(2);
+                        
+                        cell1.innerHTML = component;
+                        cell2.innerHTML = `${percentage}%`;
+                        cell3.innerHTML = `${value.amount.toFixed(2)} €`;
+                    }
+                }
             }
         }
 

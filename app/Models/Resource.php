@@ -22,7 +22,11 @@ class Resource extends Model
         'remuneration_breakdown',
         'email',
         'phone',
-        'is_active'
+        'is_active',
+        'treasure_days',
+        'treasure_hours_per_day',
+        'treasure_total_hours',
+        'treasure_available_hours'
     ];
 
     protected $casts = [
