@@ -7,6 +7,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TasksTimeTrackingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\UserController;
@@ -61,7 +62,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/activities/by-project/{project}', [ActivityController::class, 'byProjectForApi'])->name('api.activities.by-project');
     
     // Prima la rotta specifica timetracking
-    Route::get('/tasks/timetracking', [TaskController::class, 'timeTracking'])->name('tasks.timetracking');
+    Route::get('/tasks/timetracking', TasksTimeTrackingController::class)->name('tasks.timetracking');
     
     // Poi eventuali altre rotte specifiche per i task
     Route::post('/tasks/reorder', [TaskController::class, 'reorder'])->name('tasks.reorder');
