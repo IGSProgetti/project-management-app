@@ -41,6 +41,19 @@
                 </a>
             </li>
 
+            <!-- 🆕 NUOVA VOCE MENU -->
+    <li>
+        <a href="{{ route('manager.dashboard') }}" class="nav-link {{ request()->routeIs('manager.dashboard') ? 'active' : '' }}">
+            <i class="fas fa-tachometer-alt"></i>
+            Manager Dashboard
+        </a>
+    </li>
+    
+    <!-- Separatore visivo opzionale -->
+    <li class="nav-separator">
+        <hr class="my-2">
+    </li>
+
             <li>
                 <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') && !request()->routeIs('users.profile') ? 'active' : '' }}">
                     <i class="fas fa-user-cog"></i>

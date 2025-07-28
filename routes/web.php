@@ -118,6 +118,10 @@ Route::middleware(['auth'])->group(function () {
     // API per statistiche
     Route::get('/api/clients/tasks-created-stats', [ClientController::class, 'getTasksCreatedStats'])->name('api.clients.tasks-stats');
     Route::get('/api/projects/tasks-created-stats', [ProjectController::class, 'getTasksCreatedStats'])->name('api.projects.tasks-stats');
+
+     // 🆕 NUOVA ROUTE per Manager Dashboard
+    Route::get('/manager-dashboard', [App\Http\Controllers\ManagerDashboardController::class, 'index'])
+        ->name('manager.dashboard');
 });
 
 // Amministrazione utenti e ore giornaliere (solo per admin)
