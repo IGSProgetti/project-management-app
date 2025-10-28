@@ -84,22 +84,23 @@
 
     /* Sidebar trasformata in menu laterale mobile */
     .sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: var(--sidebar-width);
-        height: 100vh;
-        z-index: 1040;
-        transform: translateX(-100%);
-        transition: transform var(--mobile-menu-transition);
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: var(--sidebar-width) !important;
+        height: 100vh !important;
+        z-index: 1040 !important;
+        transform: translateX(-100%) !important;
+        transition: transform var(--mobile-menu-transition) !important;
         overflow-y: auto;
         box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
         /* IMPORTANTE: padding bottom per evitare che navbar copra ultimo elemento */
         padding-bottom: 100px !important;
+        will-change: transform;
     }
 
     .sidebar.show {
-        transform: translateX(0);
+        transform: translateX(0) !important;
     }
 
     /* Header nella sidebar per mobile */
