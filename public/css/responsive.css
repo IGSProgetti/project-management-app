@@ -1,380 +1,47 @@
-/* Stili responsive per IGS Project Management
- * Da includere dopo Bootstrap e eventuali altri stili CSS
- */
+/* ===================================
+   IGS PROJECT MANAGEMENT - RESPONSIVE CSS
+   Menu Hamburger Mobile Ottimizzato
+   =================================== */
 
-/* Variabili generali */
 :root {
-    --sidebar-width: 250px;
+    --sidebar-width: 280px;
     --sidebar-width-collapsed: 80px;
     --header-height: 60px;
-  }
-  
-  /* Layout principale */
-  @media (max-width: 992px) {
-    .app-container {
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .sidebar {
-      width: 100%;
-      height: auto;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 1030;
-      transform: translateX(-100%);
-      transition: transform 0.3s ease;
-    }
-    
-    .sidebar.show {
-      transform: translateX(0);
-    }
-    
-    .main-content {
-      margin-left: 0;
-      padding-top: var(--header-height);
-      width: 100%;
-    }
-    
-    .header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 1020;
-      background-color: #fff;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-  }
-  
-  /* Navbar e menu */
-  @media (max-width: 992px) {
-    .navbar-toggler {
-      display: inline-block;
-    }
-    
-    .nav-menu {
-      max-height: calc(100vh - var(--header-height));
-      overflow-y: auto;
-    }
-    
-    .logo {
-      text-align: center;
-      padding: 10px;
-    }
-    
-    .logo h2 {
-      font-size: 1.5rem;
-    }
-  }
-  
-  /* Tabelle responsive */
-  @media (max-width: 768px) {
-    .table-responsive {
-      overflow-x: auto;
-    }
-    
-    .table-responsive table {
-      min-width: 650px;
-    }
-    
-    /* Card per sostituire le tabelle in visualizzazione mobile */
-    .mobile-card-view .card {
-      margin-bottom: 1rem;
-      border: 1px solid rgba(0, 0, 0, 0.125);
-      border-radius: 0.25rem;
-    }
-    
-    .mobile-card-view .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem 1rem;
-      background-color: rgba(0, 0, 0, 0.03);
-    }
-    
-    .mobile-card-view .card-body {
-      padding: 1rem;
-    }
-    
-    .mobile-card-view .data-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 0.5rem;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    }
-    
-    .mobile-card-view .data-row:last-child {
-      margin-bottom: 0;
-      padding-bottom: 0;
-      border-bottom: none;
-    }
-    
-    .mobile-card-view .data-label {
-      font-weight: 600;
-    }
-  }
-  
-  /* Miglioramenti per le schede e i form */
-  @media (max-width: 768px) {
-    .card {
-      margin-bottom: 1rem;
-    }
-    
-    .form-group {
-      margin-bottom: 1rem;
-    }
-    
-    .btn-group {
-      display: flex;
-      margin-bottom: 0.5rem;
-    }
-    
-    .btn-group .btn {
-      flex: 1;
-    }
-    
-    /* Migliorare padding per le visualizzazioni mobile */
-    .container-fluid {
-      padding-left: 15px;
-      padding-right: 15px;
-    }
-    
-    .row {
-      margin-left: -10px;
-      margin-right: -10px;
-    }
-    
-    .col, .col-md-1, .col-md-2, .col-md-3, .col-md-4, .col-md-5, .col-md-6, 
-    .col-md-7, .col-md-8, .col-md-9, .col-md-10, .col-md-11, .col-md-12 {
-      padding-left: 10px;
-      padding-right: 10px;
-    }
-  }
-  
-  /* Dashboard cards */
-  @media (max-width: 576px) {
-    .stats-card {
-      margin-bottom: 15px;
-    }
-    
-    .stats-card .card-body {
-      padding: 1rem;
-    }
-    
-    .stats-icon {
-      width: 50px;
-      height: 50px;
-      font-size: 1.25rem;
-    }
-    
-    .stats-info h3 {
-      font-size: 1.5rem;
-    }
-  }
-  
-  /* Kanban board responsive */
-  @media (max-width: 768px) {
-    .kanban-board {
-      display: block;
-      min-height: auto;
-      padding-bottom: 50px;
-    }
-    
-    .kanban-column {
-      width: 100%;
-      min-width: 100%;
-      margin-bottom: 20px;
-    }
-  }
-  
-  /* Buttons responsiveness and touch-friendly */
-  @media (max-width: 576px) {
-    .btn {
-      padding: 0.5rem 0.75rem;
-    }
-    
-    .btn-sm {
-      padding: 0.25rem 0.5rem;
-    }
-    
-    .btn-group .btn {
-      padding: 0.5rem 0.5rem;
-    }
-    
-    /* Ensure buttons have enough touch target size */
-    .btn, .btn-sm, .form-control, .form-select {
-      min-height: 44px;
-    }
-    
-    /* Ensure buttons in a group are well spaced */
-    .btn-group > .btn {
-      margin-right: 2px;
-    }
-  }
-  
-  /* Utility classes for mobile view */
-  @media (max-width: 768px) {
-    .mobile-full-width {
-      width: 100% !important;
-    }
-    
-    .mobile-text-center {
-      text-align: center !important;
-    }
-    
-    .mobile-mb-3 {
-      margin-bottom: 1rem !important;
-    }
-    
-    .mobile-mb-2 {
-      margin-bottom: 0.5rem !important;
-    }
-    
-    .mobile-pt-2 {
-      padding-top: 0.5rem !important;
-    }
-    
-    .mobile-stack-vertical {
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .mobile-stack-vertical .btn,
-    .mobile-stack-vertical .form-control,
-    .mobile-stack-vertical .form-select {
-      margin-bottom: 0.5rem;
-    }
-  }
-  
-  /* Hamburer menu for mobile */
-  .mobile-menu-toggle {
+    --mobile-menu-transition: 0.3s ease;
+}
+
+/* ===================================
+   MOBILE HEADER & HAMBURGER BUTTON
+   =================================== */
+
+.mobile-menu-toggle {
     display: none;
-    background: none;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 1050;
+    background: #fff;
     border: none;
-    font-size: 1.5rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle:active {
+    transform: scale(0.95);
+}
+
+.mobile-menu-toggle i {
+    font-size: 20px;
     color: #333;
-    cursor: pointer;
-  }
-  
-  @media (max-width: 992px) {
-    .mobile-menu-toggle {
-      display: block;
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      z-index: 1040;
-    }
-    
-    /* When sidebar is shown, adjust toggle position */
-    .sidebar.show + .mobile-menu-toggle {
-      left: calc(var(--sidebar-width) + 10px);
-    }
-  }
-  
-  /* Fix for modals in mobile view */
-  @media (max-width: 576px) {
-    .modal-dialog {
-      margin: 0.5rem;
-    }
-    
-    .modal-content {
-      border-radius: 0.25rem;
-    }
-    
-    .modal-header {
-      padding: 0.75rem;
-    }
-    
-    .modal-body {
-      padding: 1rem;
-      max-height: 70vh;
-      overflow-y: auto;
-    }
-    
-    .modal-footer {
-      padding: 0.75rem;
-      flex-wrap: wrap;
-    }
-    
-    .modal-footer > .btn {
-      margin: 0.25rem;
-    }
-  }
-  
-  /* Progress bars in mobile view */
-  @media (max-width: 576px) {
-    .progress {
-      height: 10px !important;
-    }
-  }
-  
-  /* Specific adjustments for resource-item cards */
-  @media (max-width: 768px) {
-    .resource-item .card-body {
-      padding: 0.75rem;
-    }
-    
-    .resource-item .form-check {
-      margin-bottom: 0.5rem;
-    }
-    
-    .resource-hours {
-      margin-top: 1rem;
-    }
-  }
-  
-  /* Fix for task board in mobile */
-  .task-card {
-    cursor: pointer;
-    transition: transform 0.2s ease;
-  }
-  
-  .task-card:active {
-    transform: scale(0.98);
-  }
-  
-  /* Client detail page adjustments */
-  @media (max-width: 768px) {
-    .client-stats-card {
-      margin-bottom: 1rem;
-    }
-    
-    #projectsTabs .nav-link {
-      padding: 0.5rem 0.75rem;
-      font-size: 0.875rem;
-    }
-    
-    .tab-content {
-      padding: 1rem;
-    }
-  }
-  
-  /* Dashboard adaptations */
-  @media (max-width: 768px) {
-    .dashboard-container .col-md-3,
-    .dashboard-container .col-md-6 {
-      margin-bottom: 1rem;
-    }
-  }
-  
-  /* Login page adjustments */
-  @media (max-width: 576px) {
-    .login-container {
-      width: 100%;
-      padding: 15px;
-    }
-    
-    .card-header h3 {
-      font-size: 1.5rem;
-    }
-  }
-  
-  /* Mobile navigation overlay */
-  .mobile-overlay {
+    transition: transform 0.3s ease;
+}
+
+/* Overlay per sfondo scuro */
+.mobile-overlay {
     display: none;
     position: fixed;
     top: 0;
@@ -382,11 +49,389 @@
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1025;
-  }
-  
-  @media (max-width: 992px) {
-    .mobile-overlay.show {
-      display: block;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity var(--mobile-menu-transition);
+}
+
+.mobile-overlay.show {
+    opacity: 1;
+}
+
+/* ===================================
+   RESPONSIVE BREAKPOINTS
+   =================================== */
+
+/* Tablet e Mobile - max-width: 992px */
+@media (max-width: 992px) {
+    /* Mostra il toggle hamburger */
+    .mobile-menu-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
-  }
+
+    .mobile-overlay {
+        display: block;
+        visibility: hidden;
+    }
+
+    .mobile-overlay.show {
+        visibility: visible;
+    }
+
+    /* Sidebar trasformata in menu laterale mobile */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: var(--sidebar-width);
+        height: 100vh;
+        z-index: 1040;
+        transform: translateX(-100%);
+        transition: transform var(--mobile-menu-transition);
+        overflow-y: auto;
+        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+    }
+
+    /* Header nella sidebar per mobile */
+    .sidebar .logo {
+        padding: 20px 16px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin: 0;
+        margin-bottom: 0;
+        border-bottom: none;
+        border-radius: 0;
+    }
+
+    .sidebar .logo h2 {
+        color: white;
+        font-size: 18px;
+        margin: 0;
+    }
+
+    /* Menu items ottimizzati per mobile */
+    .nav-menu {
+        padding: 8px 0;
+    }
+
+    .nav-menu li {
+        margin-bottom: 0;
+    }
+
+    .nav-menu a {
+        padding: 14px 16px;
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        min-height: 48px; /* Touch-friendly */
+    }
+
+    .nav-menu a i {
+        width: 24px;
+        height: 24px;
+        margin-right: 12px;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Separatori tra sezioni del menu */
+    .nav-separator {
+        margin: 8px 0;
+        padding: 0;
+    }
+
+    .nav-separator hr {
+        margin: 0;
+        border-color: #e0e0e0;
+    }
+
+    /* Main content - occupa tutto lo spazio */
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding-top: 70px; /* Spazio per l'hamburger button */
+    }
+
+    /* Previeni scroll quando il menu è aperto */
+    body.menu-open {
+        overflow: hidden;
+    }
+}
+
+/* ===================================
+   MOBILE - max-width: 768px
+   =================================== */
+
+@media (max-width: 768px) {
+    .mobile-menu-toggle {
+        top: 10px;
+        left: 10px;
+        width: 42px;
+        height: 42px;
+    }
+
+    .sidebar {
+        width: 85%; /* Occupa più spazio su schermi piccoli */
+        max-width: 320px;
+    }
+
+    /* Dashboard cards - 1 colonna */
+    .dashboard-container .row [class*='col-'] {
+        flex: 0 0 100%;
+        max-width: 100%;
+        margin-bottom: 15px;
+    }
+
+    /* Stats cards più compatte */
+    .stats-card .card-body {
+        padding: 16px;
+    }
+
+    .stats-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 24px;
+    }
+
+    .stats-info h5 {
+        font-size: 13px;
+    }
+
+    .stats-info h3 {
+        font-size: 24px;
+    }
+
+    /* Tabelle responsive con scroll orizzontale */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table-responsive table {
+        min-width: 700px;
+    }
+
+    /* Buttons ottimizzati per mobile */
+    .btn {
+        min-height: 44px;
+        padding: 10px 16px;
+    }
+
+    .btn-sm {
+        min-height: 38px;
+        padding: 6px 12px;
+    }
+
+    /* Forms ottimizzati per mobile */
+    .form-control,
+    .form-select {
+        min-height: 44px;
+        font-size: 16px; /* Previene zoom automatico iOS */
+    }
+
+    /* Modal ottimizzati per mobile */
+    .modal-dialog {
+        margin: 10px;
+    }
+
+    .modal-content {
+        border-radius: 12px;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 16px;
+    }
+
+    /* Cards più compatte */
+    .card {
+        margin-bottom: 15px;
+    }
+
+    .card-body {
+        padding: 16px;
+    }
+
+    .card-header {
+        padding: 12px 16px;
+    }
+}
+
+/* ===================================
+   SMALL MOBILE - max-width: 576px
+   =================================== */
+
+@media (max-width: 576px) {
+    .sidebar {
+        width: 90%;
+        max-width: 100%;
+    }
+
+    .mobile-menu-toggle {
+        width: 40px;
+        height: 40px;
+    }
+
+    .mobile-menu-toggle i {
+        font-size: 18px;
+    }
+
+    .main-content {
+        padding: 16px;
+        padding-top: 65px;
+    }
+
+    /* Typography più piccola */
+    h1 {
+        font-size: 24px;
+    }
+
+    h2 {
+        font-size: 20px;
+    }
+
+    h3 {
+        font-size: 18px;
+    }
+
+    h4 {
+        font-size: 16px;
+    }
+
+    /* Buttons a larghezza piena */
+    .btn-group {
+        flex-direction: column;
+    }
+
+    .btn-group .btn {
+        width: 100%;
+        margin-bottom: 8px;
+        margin-right: 0 !important;
+    }
+
+    /* Filtri e controlli a colonna */
+    .projects-controls,
+    .filter-controls,
+    .search-box {
+        flex-direction: column;
+    }
+
+    .projects-controls > *,
+    .filter-controls > * {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    /* Nasconde colonne non essenziali nelle tabelle */
+    .table-mobile-hide {
+        display: none;
+    }
+}
+
+/* ===================================
+   UTILITY CLASSES PER MOBILE
+   =================================== */
+
+@media (max-width: 768px) {
+    .mobile-full-width {
+        width: 100% !important;
+    }
+
+    .mobile-text-center {
+        text-align: center !important;
+    }
+
+    .mobile-mb-3 {
+        margin-bottom: 1rem !important;
+    }
+
+    .mobile-mb-2 {
+        margin-bottom: 0.5rem !important;
+    }
+
+    .mobile-hide {
+        display: none !important;
+    }
+
+    .mobile-show {
+        display: block !important;
+    }
+
+    .mobile-flex-column {
+        flex-direction: column !important;
+    }
+
+    .mobile-stack-vertical {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .mobile-stack-vertical > * {
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* ===================================
+   ANIMAZIONI E TRANSIZIONI
+   =================================== */
+
+.sidebar,
+.mobile-overlay,
+.mobile-menu-toggle i {
+    transition: all var(--mobile-menu-transition);
+}
+
+/* Smooth scroll */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Focus styles per accessibilità */
+.mobile-menu-toggle:focus,
+.nav-menu a:focus {
+    outline: 2px solid #2196F3;
+    outline-offset: 2px;
+}
+
+/* ===================================
+   FIX PER iOS SAFARI
+   =================================== */
+
+@supports (-webkit-touch-callout: none) {
+    .sidebar {
+        height: -webkit-fill-available;
+    }
+
+    body.menu-open {
+        position: fixed;
+        width: 100%;
+    }
+}
+
+/* ===================================
+   DARK MODE SUPPORT (opzionale)
+   =================================== */
+
+@media (prefers-color-scheme: dark) {
+    .mobile-menu-toggle {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .mobile-menu-toggle i {
+        color: #fff;
+    }
+
+    .mobile-overlay {
+        background-color: rgba(0, 0, 0, 0.7);
+    }
+}
