@@ -7,56 +7,64 @@
     <!-- Statistiche generali -->
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card stats-card">
-                <div class="card-body">
-                    <div class="stats-icon">
-                        <i class="fas fa-building"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h5>Clienti</h5>
-                        <h3>{{ $stats['clients'] }}</h3>
+            <a href="{{ route('clients.index') }}" class="text-decoration-none">
+                <div class="card stats-card">
+                    <div class="card-body">
+                        <div class="stats-icon">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <div class="stats-info">
+                            <h5>Clienti</h5>
+                            <h3>{{ $stats['clients'] }}</h3>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-md-3">
-            <div class="card stats-card">
-                <div class="card-body">
-                    <div class="stats-icon">
-                        <i class="fas fa-project-diagram"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h5>Progetti</h5>
-                        <h3>{{ $stats['projects'] }}</h3>
+            <a href="{{ route('projects.index') }}" class="text-decoration-none">
+                <div class="card stats-card">
+                    <div class="card-body">
+                        <div class="stats-icon">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <div class="stats-info">
+                            <h5>Progetti</h5>
+                            <h3>{{ $stats['projects'] }}</h3>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-md-3">
-            <div class="card stats-card">
-                <div class="card-body">
-                    <div class="stats-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h5>Risorse</h5>
-                        <h3>{{ $stats['resources'] }}</h3>
+            <a href="{{ route('resources.index') }}" class="text-decoration-none">
+                <div class="card stats-card">
+                    <div class="card-body">
+                        <div class="stats-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stats-info">
+                            <h5>Risorse</h5>
+                            <h3>{{ $stats['resources'] }}</h3>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-md-3">
-            <div class="card stats-card">
-                <div class="card-body">
-                    <div class="stats-icon">
-                        <i class="fas fa-tasks"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h5>Attività</h5>
-                        <h3>{{ $stats['activities'] }}</h3>
+            <a href="{{ route('activities.index') }}" class="text-decoration-none">
+                <div class="card stats-card">
+                    <div class="card-body">
+                        <div class="stats-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="stats-info">
+                            <h5>Attività</h5>
+                            <h3>{{ $stats['activities'] }}</h3>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 
@@ -326,6 +334,7 @@ function loadTasksCreatedStats() {
         border-radius: 10px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         transition: transform 0.3s ease;
+        cursor: pointer;
     }
     
     .stats-card:hover {
