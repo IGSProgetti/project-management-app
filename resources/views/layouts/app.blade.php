@@ -2,8 +2,11 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="#2196F3">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>IGS Project Management - @yield('title')</title>
     
     <!-- Bootstrap CSS -->
@@ -22,7 +25,7 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="logo">
-                <h2>IGS Project</h2>
+                <h2><i class="fas fa-briefcase"></i> IGS Project</h2>
             </div>
             <ul class="nav-menu">
                 <li>
@@ -47,7 +50,7 @@
                         </a>
                     </li>
                     
-                    <!-- Separatore visivo opzionale -->
+                    <!-- Separatore visivo -->
                     <li class="nav-separator">
                         <hr class="my-2">
                     </li>
@@ -115,75 +118,85 @@
                         <span>Calendario</span>
                     </a>
                 </li>
+
+                <!-- Separatore prima del profilo -->
+                <li class="nav-separator">
+                    <hr class="my-2">
+                </li>
+                
+                <li>
+                    <a href="{{ route('users.profile') }}" class="nav-link {{ request()->routeIs('users.profile') ? 'active' : '' }}">
+                        <i class="fas fa-user"></i>
+                        <span>Il Mio Profilo</span>
+                    </a>
+                </li>
+                
+                <li>
+                    <a href="{{ route('logout') }}" class="nav-link"
+                       onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                    <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
+                        @csrf
+                    </form>
+                </li>
             </ul>
         </div>
 
         <!-- Main Content -->
         <div class="main-content">
+            <!-- Header con user info -->
             <div class="header">
-                <div class="page-title">
-                    <h1>@yield('title')</h1>
-                </div>
-                <div class="header-actions">
-                    @if(auth()->check())
-                    <div class="dropdown">
-                        <button class="btn btn-link dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user-circle"></i> {{ auth()->user()->name }}
-                            @if(auth()->user()->resource)
-                            <small>({{ auth()->user()->resource->name }})</small>
-                            @endif
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                            <li>
-                                <a class="dropdown-item" href="{{ route('users.profile') }}">
-                                    <i class="fas fa-user"></i> Profilo
-                                </a>
-                            </li>
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-                            <li>
-                                <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
-                                    @csrf
-                                </form>
-                                <a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                    <i class="fas fa-sign-out-alt"></i> Logout
-                                </a>
-                            </li>
-                        </ul>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="mb-0">@yield('page-title', 'Dashboard')</h1>
                     </div>
-                    @endif
+                    <div class="user-info d-none d-md-flex align-items-center">
+                        <span class="me-2">
+                            <i class="fas fa-user-circle"></i>
+                            {{ auth()->user()->name }}
+                        </span>
+                        @if(auth()->user()->isAdmin())
+                            <span class="badge bg-primary">Admin</span>
+                        @endif
+                    </div>
                 </div>
             </div>
 
-            <!-- Flash Messages -->
-            @if(session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
+            <!-- Content Area -->
+            <div class="content-wrapper">
+                <!-- Messaggi di successo/errore -->
+                @if(session('success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
 
-            @if(session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    {{ session('error') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
+                @if(session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
 
-            @if($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <ul class="mb-0">
-                        @foreach($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
+                @if($errors->any())
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Attenzione!</strong>
+                        <ul class="mb-0 mt-2">
+                            @foreach($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
 
-            <!-- Content -->
-            <div class="content">
+                <!-- Main Content Yield -->
                 @yield('content')
             </div>
         </div>
@@ -191,9 +204,7 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Custom JS -->
+    <!-- Responsive JS - IMPORTANTE: caricare prima di altri script -->
     <script src="{{ asset('js/responsive.js') }}"></script>
     
     @stack('scripts')
