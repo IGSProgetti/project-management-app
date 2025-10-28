@@ -296,20 +296,20 @@
         }
         
         // Inizializza il calendario
-        const calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            locale: 'it',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,listMonth'
-            },
-            buttonText: {
-                today: 'Oggi',
-                month: 'Mese',
-                week: 'Settimana',
-                list: 'Lista'
-            },
+const calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    locale: 'it',
+    
+    // NUOVO: Configurazione mobile
+    aspectRatio: window.innerWidth <= 768 ? 1.0 : 1.35,
+    contentHeight: 'auto',
+    fixedWeekCount: false,
+    
+    headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,listMonth'
+    },
             events: function(info, successCallback, failureCallback) {
                 // Costruisci parametri della query
                 const params = new URLSearchParams();
