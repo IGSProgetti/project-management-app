@@ -74,6 +74,8 @@ Route::middleware(['auth'])->group(function () {
     
     // Poi la resource route (per ultima)
     Route::resource('tasks', TaskController::class);
+
+    Route::post('/tasks/create-activity', [TaskController::class, 'createActivity'])->name('tasks.create-activity');
     
     // Rotte per AJAX e API interne all'applicazione
     Route::get('/api/resources-by-project/{project}', [ResourceController::class, 'getByProject'])->name('api.resources-by-project');

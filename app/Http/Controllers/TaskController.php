@@ -292,11 +292,29 @@ class TaskController extends Controller
                 $successMessage .= ' Nuovo progetto creato e da consolidare.';
             }
 
+            // Se la richiesta è JSON (dal calendario), restituisci JSON
+            if ($request->expectsJson() || $request->header('Accept') === 'application/json') {
+                return response()->json([
+                    'success' => true,
+                    'message' => $successMessage,
+                    'task' => $task
+                ]);
+            }
+            
+            // Altrimenti redirect normale
             return redirect()->route('activities.show', $activity->id)
                 ->with('success', $successMessage);
 
         } catch (\Exception $e) {
             DB::rollback();
+            
+            // Se la richiesta è JSON, restituisci errore JSON
+            if ($request->expectsJson() || $request->header('Accept') === 'application/json') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Errore nella creazione del task: ' . $e->getMessage()
+                ], 500);
+            }
             
             return redirect()->back()
                 ->with('error', 'Errore nella creazione del task: ' . $e->getMessage())
@@ -1159,5 +1177,59 @@ class TaskController extends Controller
         
         // Per ora, reindirizza a CSV come fallback
         return $this->generateCsvExport($tasks);
+    }
+
+    /**
+     * Crea una nuova attività al volo (da calendario o task)
+     */
+    public function createActivity(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'project_id' => 'required|exists:projects,id',
+            'estimated_minutes' => 'required|integer|min:1',
+            'hours_type' => 'required|in:standard,extra'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dati non validi',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $activity = new \App\Models\Activity();
+            $activity->name = $request->name;
+            $activity->project_id = $request->project_id;
+            $activity->estimated_minutes = $request->estimated_minutes;
+            $activity->actual_minutes = 0;
+            $activity->hours_type = $request->hours_type;
+            $activity->status = 'pending';
+            $activity->estimated_cost = 0; // AGGIUNTO!
+            $activity->actual_cost = 0; // AGGIUNTO!
+            
+            // Se l'utente è una risorsa, assegna automaticamente
+            if (Auth::user()->resource_id) {
+                $activity->resource_id = Auth::user()->resource_id;
+            }
+            
+            $activity->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Attività creata con successo',
+                'activity' => [
+                    'id' => $activity->id,
+                    'name' => $activity->name
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore nella creazione dell\'attività: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

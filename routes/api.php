@@ -46,3 +46,15 @@ Route::get('/activity-resources/{activityId}', function($activityId) {
         'resources' => $resources
     ]);
 });
+
+// API per il calendario - Caricamento dati
+use App\Http\Controllers\Api\CalendarApiController;
+
+Route::middleware(['web'])->group(function () {
+    Route::get('/clients', [CalendarApiController::class, 'getClients']);
+    Route::get('/projects', [CalendarApiController::class, 'getProjects']);
+    Route::get('/resources', [CalendarApiController::class, 'getResources']);
+    Route::get('/projects-by-client/{clientId}', [CalendarApiController::class, 'getProjectsByClient']);
+    Route::get('/areas-by-project/{projectId}', [CalendarApiController::class, 'getAreasByProject']);
+    Route::get('/activities-by-project/{projectId}', [CalendarApiController::class, 'getActivitiesByProject']);
+});
