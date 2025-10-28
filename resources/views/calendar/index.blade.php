@@ -139,6 +139,7 @@
 
 @push('styles')
 <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+<link href="{{ asset('css/calendar-mobile.css') }}" rel='stylesheet' />
 <style>
     #calendar {
         height: 70vh;
