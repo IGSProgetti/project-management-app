@@ -250,7 +250,7 @@
     </div>
 </div>
 
-<!-- Modal per creare Task (COMPLETO come in tasks/create.blade.php) -->
+<!-- Modal per creare Task -->
 <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
@@ -412,17 +412,17 @@
     }
     
     .event-type-project {
-        background-color: #6f42c1; /* Viola per i progetti */
+        background-color: #6f42c1;
         border-left: 4px solid #6f42c1;
     }
     
     .event-type-activity {
-        background-color: #fd7e14; /* Arancione per le attività */
+        background-color: #fd7e14;
         border-left: 4px solid #fd7e14;
     }
     
     .event-type-task {
-        background-color: #20c997; /* Verde acqua per i task */
+        background-color: #20c997;
         border-left: 4px solid #20c997;
     }
     
@@ -535,7 +535,6 @@
         padding: 20px;
     }
 }
-
 </style>
 @endpush
 
@@ -543,840 +542,698 @@
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js'></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Elementi DOM per i filtri
-        const filterEventType = document.getElementById('filterEventType');
-        const filterResource = document.getElementById('filterResource');
-        const filterStatus = document.getElementById('filterStatus');
-        const applyFiltersBtn = document.getElementById('applyFilters');
-        
-        // Elemento DOM calendario
-        const calendarEl = document.getElementById('calendar');
-        
-        // Funzione per ottenere il nome del tipo di evento
-        function getEventTypeName(type) {
-            switch(type) {
-                case 'project': return 'Progetto';
-                case 'activity': return 'Attività';
-                case 'task': return 'Task';
-                default: return type;
-            }
-        }
-        
-        // Funzione per ottenere il nome dello stato
-        function getStatusName(status) {
-            switch(status) {
-                case 'pending': return 'In attesa';
-                case 'in_progress': return 'In corso';
-                case 'completed': return 'Completato';
-                case 'on_hold': return 'In pausa';
-                default: return status;
-            }
-        }
-        
-        // Funzione per ottenere l'icona dello stato
-        function getStatusIcon(status) {
-            switch(status) {
-                case 'pending': return '<i class="fas fa-clock text-warning event-icon"></i>';
-                case 'in_progress': return '<i class="fas fa-spinner text-primary event-icon"></i>';
-                case 'completed': return '<i class="fas fa-check text-success event-icon"></i>';
-                case 'on_hold': return '<i class="fas fa-pause text-secondary event-icon"></i>';
-                default: return '';
-            }
-        }
-        
-        // Funzione per ottenere l'icona del tipo di evento
-        function getEventTypeIcon(type) {
-            switch(type) {
-                case 'project': return '<i class="fas fa-project-diagram text-purple event-icon"></i>';
-                case 'activity': return '<i class="fas fa-tasks text-orange event-icon"></i>';
-                case 'task': return '<i class="fas fa-clipboard-list text-teal event-icon"></i>';
-                default: return '';
-            }
-        }
-        
-        // Inizializza il calendario
-const calendar = new FullCalendar.Calendar(calendarEl, {
-    initialView: 'dayGridMonth',
-    locale: 'it',
+// ============================================
+// VARIABILI GLOBALI
+// ============================================
+window.calendar = null;
+let selectedDate = '';
+
+// ============================================
+// INIZIALIZZAZIONE CALENDARIO
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🟢 Inizializzazione calendario...');
     
-    // NUOVO: Configurazione mobile
-    aspectRatio: window.innerWidth <= 768 ? 1.0 : 1.35,
-    contentHeight: 'auto',
-    fixedWeekCount: false,
+    const filterEventType = document.getElementById('filterEventType');
+    const filterResource = document.getElementById('filterResource');
+    const filterStatus = document.getElementById('filterStatus');
+    const applyFiltersBtn = document.getElementById('applyFilters');
+    const calendarEl = document.getElementById('calendar');
     
-    headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek,listMonth'
+    // Funzioni helper
+    function getEventTypeName(type) {
+        switch(type) {
+            case 'project': return 'Progetto';
+            case 'activity': return 'Attività';
+            case 'task': return 'Task';
+            default: return type;
+        }
+    }
+    
+    function getStatusName(status) {
+        switch(status) {
+            case 'pending': return 'In attesa';
+            case 'in_progress': return 'In corso';
+            case 'completed': return 'Completato';
+            case 'on_hold': return 'In pausa';
+            default: return status;
+        }
+    }
+    
+    function getStatusIcon(status) {
+        switch(status) {
+            case 'pending': return '<i class="fas fa-clock text-warning event-icon"></i>';
+            case 'in_progress': return '<i class="fas fa-spinner text-primary event-icon"></i>';
+            case 'completed': return '<i class="fas fa-check text-success event-icon"></i>';
+            case 'on_hold': return '<i class="fas fa-pause text-secondary event-icon"></i>';
+            default: return '';
+        }
+    }
+    
+    function getEventTypeIcon(type) {
+        switch(type) {
+            case 'project': return '<i class="fas fa-project-diagram text-purple event-icon"></i>';
+            case 'activity': return '<i class="fas fa-tasks text-orange event-icon"></i>';
+            case 'task': return '<i class="fas fa-clipboard-list text-teal event-icon"></i>';
+            default: return '';
+        }
+    }
+    
+    function truncateText(text, maxLength) {
+        if (!text) return '';
+        return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+    }
+    
+    function getEventTypeColor(type) {
+        switch(type) {
+            case 'project': return 'rgba(111, 66, 193, 0.85)';
+            case 'activity': return 'rgba(253, 126, 20, 0.85)';
+            case 'task': return 'rgba(32, 201, 151, 0.85)';
+            default: return null;
+        }
+    }
+    
+    // Inizializza il calendario
+    window.calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'it',
+        aspectRatio: window.innerWidth <= 768 ? 1.0 : 1.35,
+        contentHeight: 'auto',
+        fixedWeekCount: false,
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,listMonth'
         },
-    
-    // NUOVO: Gestione click sul giorno
-    dateClick: function(info) {
-        showCreateEventMenu(info.dateStr);
-    },
-    
-    events: function(info, successCallback, failureCallback) {
-        
-    },
-            events: function(info, successCallback, failureCallback) {
-                // Costruisci parametri della query
-                const params = new URLSearchParams();
-                params.append('event_type', filterEventType.value);
-                
-                if (filterResource.value) {
-                    params.append('resource_id', filterResource.value);
-                }
-                
-                if (filterStatus.value) {
-                    params.append('status', filterStatus.value);
-                }
-                
-                // Richiedi eventi tramite API
-                fetch('/api/calendar/events?' + params.toString())
-                    .then(response => response.json())
-                    .then(data => {
-                        // Modifica gli eventi per aggiungere informazioni di visualizzazione
-                        const enhancedEvents = data.map(event => {
-                            const props = event.extendedProps;
-                            let resourceInfo = '';
-                            
-                            if (props.type === 'project') {
-                                resourceInfo = props.resources ? `<div><i class="fas fa-users text-muted event-icon"></i> ${truncateText(props.resources, 20)}</div>` : '';
-                            } else {
-                                resourceInfo = props.resource ? `<div><i class="fas fa-user text-muted event-icon"></i> ${props.resource}</div>` : '';
-                            }
-                            
-                            // Crea HTML per la descrizione dell'evento
-                            const htmlTitle = `
-                                <div class="fc-event-title">${event.title}</div>
-                                <div class="event-details-preview">
-                                    ${getEventTypeIcon(props.type)} ${getEventTypeName(props.type)}
-                                    ${getStatusIcon(props.status)}
-                                    ${resourceInfo}
-                                </div>
-                            `;
-                            
-                            // Aggiungi classi per lo stile in base al tipo
-                            const eventClasses = [];
-                            
-                            if (props.type === 'project') {
-                                eventClasses.push('event-project');
-                            } else if (props.type === 'activity') {
-                                eventClasses.push('event-activity');
-                            } else if (props.type === 'task') {
-                                eventClasses.push('event-task');
-                            }
-                            
-                            return {
-                                ...event,
-                                title: htmlTitle,
-                                classNames: eventClasses,
-                                // Override il colore se necessario
-                                backgroundColor: getEventTypeColor(props.type)
-                            };
-                        });
+        dateClick: function(info) {
+            showCreateEventMenu(info.dateStr);
+        },
+        events: function(info, successCallback, failureCallback) {
+            const params = new URLSearchParams();
+            params.append('event_type', filterEventType.value);
+            if (filterResource.value) params.append('resource_id', filterResource.value);
+            if (filterStatus.value) params.append('status', filterStatus.value);
+            
+            fetch('/api/calendar/events?' + params.toString())
+                .then(response => response.json())
+                .then(data => {
+                    const enhancedEvents = data.map(event => {
+                        const props = event.extendedProps;
+                        let resourceInfo = '';
                         
-                        successCallback(enhancedEvents);
-                    })
-                    .catch(error => {
-                        console.error('Error fetching events:', error);
-                        failureCallback(error);
+                        if (props.type === 'project') {
+                            resourceInfo = props.resources ? `<div><i class="fas fa-users text-muted event-icon"></i> ${truncateText(props.resources, 20)}</div>` : '';
+                        } else {
+                            resourceInfo = props.resource ? `<div><i class="fas fa-user text-muted event-icon"></i> ${props.resource}</div>` : '';
+                        }
+                        
+                        const htmlTitle = `
+                            <div class="fc-event-title">${event.title}</div>
+                            <div class="event-details-preview">
+                                ${getEventTypeIcon(props.type)} ${getEventTypeName(props.type)}
+                                ${getStatusIcon(props.status)}
+                                ${resourceInfo}
+                            </div>
+                        `;
+                        
+                        const eventClasses = [];
+                        if (props.type === 'project') eventClasses.push('event-project');
+                        else if (props.type === 'activity') eventClasses.push('event-activity');
+                        else if (props.type === 'task') eventClasses.push('event-task');
+                        
+                        return {
+                            ...event,
+                            title: htmlTitle,
+                            classNames: eventClasses,
+                            backgroundColor: getEventTypeColor(props.type)
+                        };
                     });
-            },
-            eventClick: function(info) {
-                showEventDetails(info.event);
-            },
-            eventContent: function(arg) {
-                return { html: arg.event.title };
-            }
-        });
-        
-        // Funzione per troncare testo lungo
-        function truncateText(text, maxLength) {
-            if (!text) return '';
-            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+                    
+                    successCallback(enhancedEvents);
+                })
+                .catch(error => {
+                    console.error('Error fetching events:', error);
+                    failureCallback(error);
+                });
+        },
+        eventClick: function(info) {
+            showEventDetails(info.event);
+        },
+        eventContent: function(arg) {
+            return { html: arg.event.title };
         }
-        
-        // Funzione per ottenere il colore del tipo di evento
-        function getEventTypeColor(type) {
-            switch(type) {
-                case 'project': return 'rgba(111, 66, 193, 0.85)'; // Viola
-                case 'activity': return 'rgba(253, 126, 20, 0.85)'; // Arancione
-                case 'task': return 'rgba(32, 201, 151, 0.85)'; // Verde acqua
-                default: return null; // Usa il colore dello stato
-            }
+    });
+    
+    window.calendar.render();
+    console.log('✅ Calendario renderizzato');
+    
+    // Listener per il pulsante di applica filtri
+    applyFiltersBtn.addEventListener('click', function() {
+        if (window.calendar && typeof window.calendar.refetchEvents === 'function') {
+            window.calendar.refetchEvents();
         }
+    });
+    
+    // Funzione per mostrare i dettagli dell'evento in un modal
+    function showEventDetails(event) {
+        const eventData = event._def;
+        if (!eventData || !eventData.extendedProps) return;
         
-        // Rendering iniziale del calendario
-        calendar.render();
+        const props = eventData.extendedProps;
+        const modalTitle = document.getElementById('eventDetailsModalLabel');
+        const modalContent = document.getElementById('eventDetailsContent');
+        const eventLink = document.getElementById('eventDetailsLink');
         
-        // Listener per il pulsante di applica filtri
-        applyFiltersBtn.addEventListener('click', function() {
-            calendar.refetchEvents();
-        });
+        const titleMatch = eventData.title.match(/<div class="fc-event-title">(.*?)<\/div>/);
+        const originalTitle = titleMatch ? titleMatch[1] : eventData.title;
         
-        // Funzione per mostrare i dettagli dell'evento in un modal
-        function showEventDetails(event) {
-            const eventData = event._def;
-            if (!eventData || !eventData.extendedProps) return;
-            
-            const props = eventData.extendedProps;
-            const modalTitle = document.getElementById('eventDetailsModalLabel');
-            const modalContent = document.getElementById('eventDetailsContent');
-            const eventLink = document.getElementById('eventDetailsLink');
-            
-            // Estrai il titolo originale (senza HTML)
-            const titleMatch = eventData.title.match(/<div class="fc-event-title">(.*?)<\/div>/);
-            const originalTitle = titleMatch ? titleMatch[1] : eventData.title;
-            
-            // Imposta il titolo del modal
-            modalTitle.textContent = originalTitle;
-            
-            // Prepara il contenuto del modal in base al tipo di evento
-            let content = `
+        modalTitle.textContent = originalTitle;
+        
+        let content = `
+            <div class="event-detail-row">
+                <div class="event-detail-label">Tipo:</div>
+                <div>${getEventTypeName(props.type)}</div>
+            </div>
+            <div class="event-detail-row">
+                <div class="event-detail-label">Data Scadenza:</div>
+                <div>${new Date(event.start).toLocaleDateString('it-IT')}</div>
+            </div>
+            <div class="event-detail-row">
+                <div class="event-detail-label">Stato:</div>
+                <div>
+                    <span class="event-status status-${props.status}">
+                        ${getStatusName(props.status)}
+                    </span>
+                </div>
+            </div>
+        `;
+        
+        if (props.type === 'project') {
+            content += `
                 <div class="event-detail-row">
-                    <div class="event-detail-label">Tipo:</div>
-                    <div>${getEventTypeName(props.type)}</div>
+                    <div class="event-detail-label">Cliente:</div>
+                    <div>${props.client}</div>
                 </div>
                 <div class="event-detail-row">
-                    <div class="event-detail-label">Data Scadenza:</div>
-                    <div>${new Date(event.start).toLocaleDateString('it-IT')}</div>
-                </div>
-                <div class="event-detail-row">
-                    <div class="event-detail-label">Stato:</div>
-                    <div>
-                        <span class="event-status status-${props.status}">
-                            ${getStatusName(props.status)}
-                        </span>
-                    </div>
+                    <div class="event-detail-label">Risorse:</div>
+                    <div>${props.resources}</div>
                 </div>
             `;
             
-            // Aggiungi dettagli specifici in base al tipo di evento
-            if (props.type === 'project') {
+            if (props.description) {
                 content += `
                     <div class="event-detail-row">
-                        <div class="event-detail-label">Cliente:</div>
-                        <div>${props.client}</div>
-                    </div>
-                    <div class="event-detail-row">
-                        <div class="event-detail-label">Risorse:</div>
-                        <div>${props.resources}</div>
+                        <div class="event-detail-label">Descrizione:</div>
+                        <div>${props.description}</div>
                     </div>
                 `;
-                
-                if (props.description) {
-                    content += `
-                        <div class="event-detail-row">
-                            <div class="event-detail-label">Descrizione:</div>
-                            <div>${props.description}</div>
-                        </div>
-                    `;
-                }
-            } else {
-                content += `
-                    <div class="event-detail-row">
-                        <div class="event-detail-label">Progetto:</div>
-                        <div>${props.project}</div>
-                    </div>
-                    <div class="event-detail-row">
-                        <div class="event-detail-label">Risorsa:</div>
-                        <div>${props.resource}</div>
-                    </div>
-                `;
-                
-                if (props.type === 'task') {
-                    content += `
-                        <div class="event-detail-row">
-                            <div class="event-detail-label">Attività:</div>
-                            <div>${props.activity}</div>
-                        </div>
-                    `;
-                }
             }
+        } else {
+            content += `
+                <div class="event-detail-row">
+                    <div class="event-detail-label">Progetto:</div>
+                    <div>${props.project}</div>
+                </div>
+                <div class="event-detail-row">
+                    <div class="event-detail-label">Risorsa:</div>
+                    <div>${props.resource}</div>
+                </div>
+            `;
             
-            // Imposta il contenuto del modal
-            modalContent.innerHTML = content;
-            
-            // Imposta il link per i dettagli completi
-            eventLink.href = props.url;
-            
-            // Mostra il modal
-            const modal = new bootstrap.Modal(document.getElementById('eventDetailsModal'));
-            modal.show();
+            if (props.type === 'task') {
+                content += `
+                    <div class="event-detail-row">
+                        <div class="event-detail-label">Attività:</div>
+                        <div>${props.activity}</div>
+                    </div>
+                `;
+            }
+        }
+        
+        modalContent.innerHTML = content;
+        eventLink.href = props.url;
+        
+        const modal = new bootstrap.Modal(document.getElementById('eventDetailsModal'));
+        modal.show();
+    }
+    
+    // Listener per la selezione del progetto nelle attività
+    document.getElementById('activity_project_id').addEventListener('change', function() {
+        const projectId = this.value;
+        const areaSelect = document.getElementById('activity_area_id');
+        
+        if (!projectId) {
+            areaSelect.innerHTML = '<option value="">Prima seleziona un progetto...</option>';
+            return;
+        }
+        
+        areaSelect.innerHTML = '<option value="">Caricamento...</option>';
+        
+        fetch(`/api/areas-by-project/${projectId}`)
+            .then(response => response.json())
+            .then(data => {
+                areaSelect.innerHTML = '<option value="">Seleziona un\'area...</option>';
+                
+                if (data.areas && data.areas.length > 0) {
+                    data.areas.forEach(area => {
+                        const option = document.createElement('option');
+                        option.value = area.id;
+                        option.textContent = area.name;
+                        areaSelect.appendChild(option);
+                    });
+                } else {
+                    areaSelect.innerHTML = '<option value="">Nessuna area disponibile</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Errore nel caricamento delle aree:', error);
+                areaSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
+            });
+    });
+    
+    // ============================================
+    // EVENT LISTENERS PER IL FORM TASK
+    // ============================================
+    
+    document.getElementById('task_newClientBtn').addEventListener('click', function() {
+        const form = document.getElementById('task_newClientForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        if (form.style.display === 'block') {
+            document.getElementById('task_new_client_name').focus();
         }
     });
+    
+    document.getElementById('task_cancelNewClient').addEventListener('click', function() {
+        document.getElementById('task_newClientForm').style.display = 'none';
+        document.getElementById('task_new_client_name').value = '';
+        document.getElementById('task_new_client_budget').value = '10000';
+        document.getElementById('task_new_client_notes').value = '';
+    });
+    
+    document.getElementById('task_saveNewClient').addEventListener('click', function() {
+        const clientName = document.getElementById('task_new_client_name').value.trim();
+        const clientBudget = document.getElementById('task_new_client_budget').value;
+        const clientNotes = document.getElementById('task_new_client_notes').value;
 
-    // Variabile globale per memorizzare la data selezionata
-        let selectedDate = '';
-        
-        // Funzione per mostrare il menu di creazione
-        function showCreateEventMenu(dateStr) {
-            selectedDate = dateStr;
-            
-            // Formatta la data in italiano
-            const date = new Date(dateStr);
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            const formattedDate = date.toLocaleDateString('it-IT', options);
-            
-            // Mostra la data nel modale
-            document.getElementById('selectedDateDisplay').textContent = formattedDate;
-            
-            // Apri il modale
-            const modal = new bootstrap.Modal(document.getElementById('createEventModal'));
-            modal.show();
+        if (!clientName) {
+            alert('Il nome del cliente è obbligatorio');
+            return;
         }
+
+        fetch('/tasks/create-client', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                name: clientName,
+                budget: clientBudget,
+                notes: clientNotes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const select = document.getElementById('task_client_select');
+                const option = document.createElement('option');
+                option.value = data.client.id;
+                option.textContent = data.client.name + ' [Creato da Tasks]';
+                option.selected = true;
+                select.appendChild(option);
+                
+                document.getElementById('task_newClientForm').style.display = 'none';
+                document.getElementById('task_new_client_name').value = '';
+                document.getElementById('task_new_client_budget').value = '10000';
+                document.getElementById('task_new_client_notes').value = '';
+                
+                document.getElementById('task_newProjectBtn').disabled = false;
+                loadProjectsForTaskByClient(data.client.id);
+            } else {
+                alert('Errore nella creazione del cliente: ' + (data.message || 'Errore sconosciuto'));
+            }
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            alert('Errore nella comunicazione con il server');
+        });
+    });
+    
+    document.getElementById('task_client_select').addEventListener('change', function() {
+        const clientId = this.value;
+        const newProjectBtn = document.getElementById('task_newProjectBtn');
+        const projectSelect = document.getElementById('task_project_select');
+        const activitySelect = document.getElementById('task_activity_select');
         
-        // Funzione per aprire il form delle attività
-        window.openActivityForm = function() {
-            // Chiudi il modale di scelta
-            const choiceModal = bootstrap.Modal.getInstance(document.getElementById('createEventModal'));
-            choiceModal.hide();
-            
-            // Formatta la data
-            const date = new Date(selectedDate);
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            const formattedDate = date.toLocaleDateString('it-IT', options);
-            
-            // Imposta la data nel form
-            document.getElementById('activity_due_date').value = selectedDate;
-            document.getElementById('activityDateDisplay').textContent = formattedDate;
-            
-            // Reset form
-            document.getElementById('createActivityForm').reset();
-            document.getElementById('activity_due_date').value = selectedDate;
-            
-            // Carica i progetti
-            loadProjectsForActivity();
-            
-            // Carica le risorse
-            loadResourcesForActivity();
-            
-            // Apri il modale dell'attività
-            const activityModal = new bootstrap.Modal(document.getElementById('createActivityModal'));
-            activityModal.show();
+        newProjectBtn.disabled = !clientId;
+        
+        if (clientId) {
+            loadProjectsForTaskByClient(clientId);
+        } else {
+            projectSelect.innerHTML = '<option value="">Prima seleziona un cliente</option>';
+            activitySelect.innerHTML = '<option value="">Prima seleziona un progetto...</option>';
+            document.getElementById('task_newActivityBtn').disabled = true;
         }
+    });
+    
+    document.getElementById('task_newProjectBtn').addEventListener('click', function() {
+        const form = document.getElementById('task_newProjectForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        if (form.style.display === 'block') {
+            document.getElementById('task_new_project_name').focus();
+        }
+    });
+    
+    document.getElementById('task_cancelNewProject').addEventListener('click', function() {
+        document.getElementById('task_newProjectForm').style.display = 'none';
+        document.getElementById('task_new_project_name').value = '';
+        document.getElementById('task_new_project_description').value = '';
+    });
+    
+    document.getElementById('task_saveNewProject').addEventListener('click', function() {
+        const projectName = document.getElementById('task_new_project_name').value.trim();
+        const projectDescription = document.getElementById('task_new_project_description').value;
+        const clientId = document.getElementById('task_client_select').value;
+
+        if (!projectName) {
+            alert('Il nome del progetto è obbligatorio');
+            return;
+        }
+
+        if (!clientId) {
+            alert('Seleziona prima un cliente');
+            return;
+        }
+
+        fetch('/tasks/create-project', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({
+                name: projectName,
+                description: projectDescription,
+                client_id: clientId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const projectSelect = document.getElementById('task_project_select');
+                const option = document.createElement('option');
+                option.value = data.project.id;
+                option.textContent = data.project.name + ' [Creato da Tasks]';
+                option.selected = true;
+                projectSelect.appendChild(option);
+                
+                document.getElementById('task_newProjectForm').style.display = 'none';
+                document.getElementById('task_new_project_name').value = '';
+                document.getElementById('task_new_project_description').value = '';
+                
+                document.getElementById('task_newActivityBtn').disabled = false;
+                loadActivitiesForTaskByProject(data.project.id);
+            } else {
+                alert('Errore nella creazione del progetto: ' + (data.message || 'Errore sconosciuto'));
+            }
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            alert('Errore nella comunicazione con il server');
+        });
+    });
+    
+    document.getElementById('task_project_select').addEventListener('change', function() {
+        const projectId = this.value;
+        document.getElementById('task_newActivityBtn').disabled = !projectId;
         
-        // ============================================
-        // FORM TASK COMPLETO
-        // ============================================
-        
-        // Funzione per aprire il form dei task
-        window.openTaskForm = function() {
-            // Chiudi il modale di scelta
-            const choiceModal = bootstrap.Modal.getInstance(document.getElementById('createEventModal'));
-            choiceModal.hide();
-            
-            // Formatta la data
-            const date = new Date(selectedDate);
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            const formattedDate = date.toLocaleDateString('it-IT', options);
-            
-            // Imposta la data nel form
-            document.getElementById('task_due_date').value = selectedDate;
-            document.getElementById('taskDateDisplay').textContent = formattedDate;
-            
-            // Reset form
-            document.getElementById('createTaskForm').reset();
-            document.getElementById('task_due_date').value = selectedDate;
-            
-            // Reset delle select
-            document.getElementById('task_project_select').innerHTML = '<option value="">Prima seleziona un cliente</option>';
+        if (projectId) {
+            loadActivitiesForTaskByProject(projectId);
+        } else {
             document.getElementById('task_activity_select').innerHTML = '<option value="">Prima seleziona un progetto...</option>';
-            
-            // Carica i clienti
-            loadClientsForTask();
-
-            // Attendi che il modale sia nel DOM, poi aggiungi il listener per "Nuova Attività"
-            setTimeout(function() {
-                const taskNewActivityBtn = document.getElementById('task_newActivityBtn');
-                if (taskNewActivityBtn && !taskNewActivityBtn.hasAttribute('data-listener-added')) {
-                    taskNewActivityBtn.setAttribute('data-listener-added', 'true');
-                    
-                    taskNewActivityBtn.addEventListener('click', function() {
-                        const projectId = document.getElementById('task_project_select').value;
-                        
-                        if (!projectId) {
-                            alert('Seleziona prima un progetto');
-                            return;
-                        }
-                        
-                        const activityName = prompt('Inserisci il nome della nuova attività:');
-                        
-                        if (!activityName || activityName.trim() === '') {
-                            return;
-                        }
-                        
-                        const estimatedMinutes = prompt('Inserisci i minuti stimati per questa attività:', '60');
-                        
-                        if (!estimatedMinutes || isNaN(estimatedMinutes)) {
-                            alert('Devi inserire un numero valido di minuti');
-                            return;
-                        }
-                        
-                        // Crea l'attività via AJAX
-                        fetch('/tasks/create-activity', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                            },
-                            body: JSON.stringify({
-                                name: activityName.trim(),
-                                project_id: projectId,
-                                estimated_minutes: parseInt(estimatedMinutes),
-                                hours_type: 'standard'
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                const activitySelect = document.getElementById('task_activity_select');
-                                const option = document.createElement('option');
-                                option.value = data.activity.id;
-                                option.textContent = data.activity.name + ' [Creata ora]';
-                                option.selected = true;
-                                activitySelect.appendChild(option);
-                                
-                                alert('Attività creata con successo!');
-                            } else {
-                                alert('Errore nella creazione dell\'attività: ' + (data.message || 'Errore sconosciuto'));
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Errore:', error);
-                            alert('Errore nella comunicazione con il server');
-                        });
-                    });
-                }
-            }, 100);
-            
-            // Apri il modale del task
-            const taskModal = new bootstrap.Modal(document.getElementById('createTaskModal'));
-            taskModal.show();
         }
+    });
+    
+    // SUBMIT FORM TASK - IL PIÙ IMPORTANTE!
+    document.getElementById('createTaskForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        console.log('📤 Invio form task...');
         
-        // Carica i clienti per il form task
-        function loadClientsForTask() {
-            fetch('/api/clients')
-                .then(response => response.json())
-                .then(data => {
-                    const select = document.getElementById('task_client_select');
-                    select.innerHTML = '<option value="">Seleziona cliente esistente</option>';
-                    
-                    data.forEach(client => {
-                        const option = document.createElement('option');
-                        option.value = client.id;
-                        option.textContent = client.name;
-                        if (client.created_from_tasks) {
-                            option.textContent += ' [Creato da Tasks]';
-                        }
-                        select.appendChild(option);
-                    });
-                })
-                .catch(error => {
-                    console.error('Errore nel caricamento dei clienti:', error);
-                    alert('Errore nel caricamento dei clienti');
-                });
-        }
+        const formData = {
+            name: document.getElementById('task_name').value,
+            activity_id: document.getElementById('task_activity_select').value,
+            estimated_minutes: document.getElementById('task_estimated_minutes').value,
+            due_date: document.getElementById('task_due_date').value,
+            description: document.getElementById('task_description').value,
+            status: 'pending'
+        };
         
-        // Gestione pulsante nuovo cliente (TASK)
-        document.getElementById('task_newClientBtn').addEventListener('click', function() {
-            const form = document.getElementById('task_newClientForm');
-            form.style.display = form.style.display === 'none' ? 'block' : 'none';
-            if (form.style.display === 'block') {
-                document.getElementById('task_new_client_name').focus();
-            }
-        });
-        
-        // Annulla nuovo cliente (TASK)
-        document.getElementById('task_cancelNewClient').addEventListener('click', function() {
-            document.getElementById('task_newClientForm').style.display = 'none';
-            document.getElementById('task_new_client_name').value = '';
-            document.getElementById('task_new_client_budget').value = '10000';
-            document.getElementById('task_new_client_notes').value = '';
-        });
-        
-        // Salva nuovo cliente (TASK)
-        document.getElementById('task_saveNewClient').addEventListener('click', function() {
-            const clientName = document.getElementById('task_new_client_name').value.trim();
-            const clientBudget = document.getElementById('task_new_client_budget').value;
-            const clientNotes = document.getElementById('task_new_client_notes').value;
-
-            if (!clientName) {
-                alert('Il nome del cliente è obbligatorio');
-                return;
-            }
-
-            fetch('/tasks/create-client', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    name: clientName,
-                    budget: clientBudget,
-                    notes: clientNotes
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const select = document.getElementById('task_client_select');
-                    const option = document.createElement('option');
-                    option.value = data.client.id;
-                    option.textContent = data.client.name + ' [Creato da Tasks]';
-                    option.selected = true;
-                    select.appendChild(option);
-                    
-                    document.getElementById('task_newClientForm').style.display = 'none';
-                    document.getElementById('task_new_client_name').value = '';
-                    document.getElementById('task_new_client_budget').value = '10000';
-                    document.getElementById('task_new_client_notes').value = '';
-                    
-                    document.getElementById('task_newProjectBtn').disabled = false;
-                    loadProjectsForTaskByClient(data.client.id);
+        fetch('/tasks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('createTaskModal'));
+                modal.hide();
+                
+                console.log('✅ Task creato! Aggiorno calendario...');
+                console.log('Calendario disponibile?', window.calendar);
+                console.log('Metodo refetchEvents?', typeof window.calendar?.refetchEvents);
+                
+                if (window.calendar && typeof window.calendar.refetchEvents === 'function') {
+                    window.calendar.refetchEvents();
+                    console.log('✅ Calendario aggiornato');
                 } else {
-                    alert('Errore nella creazione del cliente: ' + (data.message || 'Errore sconosciuto'));
+                    console.log('⚠️ Calendario non disponibile, ricarico la pagina');
+                    location.reload();
                 }
-            })
-            .catch(error => {
-                console.error('Errore:', error);
-                alert('Errore nella comunicazione con il server');
-            });
-        });
-        
-        // Cambio cliente (TASK)
-        document.getElementById('task_client_select').addEventListener('change', function() {
-            const clientId = this.value;
-            const newProjectBtn = document.getElementById('task_newProjectBtn');
-            const projectSelect = document.getElementById('task_project_select');
-            const activitySelect = document.getElementById('task_activity_select');
-            
-            newProjectBtn.disabled = !clientId;
-            
-            if (clientId) {
-                loadProjectsForTaskByClient(clientId);
+                
+                alert('Task creato con successo!');
             } else {
-                projectSelect.innerHTML = '<option value="">Prima seleziona un cliente</option>';
-                activitySelect.innerHTML = '<option value="">Prima seleziona un progetto...</option>';
-                document.getElementById('task_newActivityBtn').disabled = true;
+                alert('Errore nella creazione del task: ' + (data.message || 'Errore sconosciuto'));
             }
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            alert('Errore nella comunicazione con il server');
         });
-        
-        // Carica progetti per cliente (TASK)
-        function loadProjectsForTaskByClient(clientId) {
-            const projectSelect = document.getElementById('task_project_select');
-            projectSelect.innerHTML = '<option value="">Caricamento...</option>';
-            
-            fetch(`/api/projects-by-client/${clientId}`)
+    });
+    
+    console.log('✅ Tutti gli event listeners aggiunti');
+});
+
+// ============================================
+// FUNZIONI GLOBALI
+// ============================================
+
+function showCreateEventMenu(dateStr) {
+    selectedDate = dateStr;
+    const date = new Date(dateStr);
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const formattedDate = date.toLocaleDateString('it-IT', options);
+    document.getElementById('selectedDateDisplay').textContent = formattedDate;
+    const modal = new bootstrap.Modal(document.getElementById('createEventModal'));
+    modal.show();
+}
+
+window.openActivityForm = function() {
+    const choiceModal = bootstrap.Modal.getInstance(document.getElementById('createEventModal'));
+    choiceModal.hide();
+    const date = new Date(selectedDate);
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const formattedDate = date.toLocaleDateString('it-IT', options);
+    document.getElementById('activity_due_date').value = selectedDate;
+    document.getElementById('activityDateDisplay').textContent = formattedDate;
+    document.getElementById('createActivityForm').reset();
+    document.getElementById('activity_due_date').value = selectedDate;
+    loadProjectsForActivity();
+    loadResourcesForActivity();
+    const activityModal = new bootstrap.Modal(document.getElementById('createActivityModal'));
+    activityModal.show();
+}
+
+window.openTaskForm = function() {
+    console.log('🔵 Apertura form task...');
+    const choiceModal = bootstrap.Modal.getInstance(document.getElementById('createEventModal'));
+    choiceModal.hide();
+    const date = new Date(selectedDate);
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const formattedDate = date.toLocaleDateString('it-IT', options);
+    document.getElementById('task_due_date').value = selectedDate;
+    document.getElementById('taskDateDisplay').textContent = formattedDate;
+    document.getElementById('createTaskForm').reset();
+    document.getElementById('task_due_date').value = selectedDate;
+    document.getElementById('task_project_select').innerHTML = '<option value="">Prima seleziona un cliente</option>';
+    document.getElementById('task_activity_select').innerHTML = '<option value="">Prima seleziona un progetto...</option>';
+    loadClientsForTask();
+
+    setTimeout(function() {
+        const taskNewActivityBtn = document.getElementById('task_newActivityBtn');
+        if (taskNewActivityBtn && !taskNewActivityBtn.hasAttribute('data-listener-added')) {
+            taskNewActivityBtn.setAttribute('data-listener-added', 'true');
+            taskNewActivityBtn.addEventListener('click', function() {
+                const projectId = document.getElementById('task_project_select').value;
+                if (!projectId) {
+                    alert('Seleziona prima un progetto');
+                    return;
+                }
+                const activityName = prompt('Inserisci il nome della nuova attività:');
+                if (!activityName || activityName.trim() === '') return;
+                const estimatedMinutes = prompt('Inserisci i minuti stimati per questa attività:', '60');
+                if (!estimatedMinutes || isNaN(estimatedMinutes)) {
+                    alert('Devi inserire un numero valido di minuti');
+                    return;
+                }
+                fetch('/tasks/create-activity', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        name: activityName.trim(),
+                        project_id: projectId,
+                        estimated_minutes: parseInt(estimatedMinutes),
+                        hours_type: 'standard'
+                    })
+                })
                 .then(response => response.json())
                 .then(data => {
-                    projectSelect.innerHTML = '<option value="">Seleziona un progetto</option>';
-                    
-                    data.projects.forEach(project => {
+                    if (data.success) {
+                        const activitySelect = document.getElementById('task_activity_select');
                         const option = document.createElement('option');
-                        option.value = project.id;
-                        option.textContent = project.name;
-                        if (project.created_from_tasks) {
-                            option.textContent += ' [Creato da Tasks]';
-                        }
-                        projectSelect.appendChild(option);
-                    });
-                })
-                .catch(error => {
-                    console.error('Errore:', error);
-                    projectSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
-                });
-        }
-        
-        // Gestione pulsante nuovo progetto (TASK)
-        document.getElementById('task_newProjectBtn').addEventListener('click', function() {
-            const form = document.getElementById('task_newProjectForm');
-            form.style.display = form.style.display === 'none' ? 'block' : 'none';
-            if (form.style.display === 'block') {
-                document.getElementById('task_new_project_name').focus();
-            }
-        });
-        
-        // Annulla nuovo progetto (TASK)
-        document.getElementById('task_cancelNewProject').addEventListener('click', function() {
-            document.getElementById('task_newProjectForm').style.display = 'none';
-            document.getElementById('task_new_project_name').value = '';
-            document.getElementById('task_new_project_description').value = '';
-        });
-        
-        // Salva nuovo progetto (TASK)
-        document.getElementById('task_saveNewProject').addEventListener('click', function() {
-            const projectName = document.getElementById('task_new_project_name').value.trim();
-            const projectDescription = document.getElementById('task_new_project_description').value;
-            const clientId = document.getElementById('task_client_select').value;
-
-            if (!projectName) {
-                alert('Il nome del progetto è obbligatorio');
-                return;
-            }
-
-            if (!clientId) {
-                alert('Seleziona prima un cliente');
-                return;
-            }
-
-            fetch('/tasks/create-project', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    name: projectName,
-                    description: projectDescription,
-                    client_id: clientId
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const projectSelect = document.getElementById('task_project_select');
-                    const option = document.createElement('option');
-                    option.value = data.project.id;
-                    option.textContent = data.project.name + ' [Creato da Tasks]';
-                    option.selected = true;
-                    projectSelect.appendChild(option);
-                    
-                    document.getElementById('task_newProjectForm').style.display = 'none';
-                    document.getElementById('task_new_project_name').value = '';
-                    document.getElementById('task_new_project_description').value = '';
-                    
-                    document.getElementById('task_newActivityBtn').disabled = false;
-                    loadActivitiesForTaskByProject(data.project.id);
-                } else {
-                    alert('Errore nella creazione del progetto: ' + (data.message || 'Errore sconosciuto'));
-                }
-            })
-            .catch(error => {
-                console.error('Errore:', error);
-                alert('Errore nella comunicazione con il server');
-            });
-        });
-        
-        // Cambio progetto (TASK)
-        document.getElementById('task_project_select').addEventListener('change', function() {
-            const projectId = this.value;
-            document.getElementById('task_newActivityBtn').disabled = !projectId;
-            
-            if (projectId) {
-                loadActivitiesForTaskByProject(projectId);
-            } else {
-                document.getElementById('task_activity_select').innerHTML = '<option value="">Prima seleziona un progetto...</option>';
-            }
-        });
-        
-        // Carica attività per progetto (TASK)
-        function loadActivitiesForTaskByProject(projectId) {
-            const activitySelect = document.getElementById('task_activity_select');
-            activitySelect.innerHTML = '<option value="">Caricamento...</option>';
-            
-            fetch(`/api/activities-by-project/${projectId}`)
-                .then(response => response.json())
-                .then(data => {
-                    activitySelect.innerHTML = '<option value="">Seleziona un\'attività</option>';
-                    
-                    if (data.activities && data.activities.length > 0) {
-                        data.activities.forEach(activity => {
-                            const option = document.createElement('option');
-                            option.value = activity.id;
-                            option.textContent = activity.name;
-                            activitySelect.appendChild(option);
-                        });
+                        option.value = data.activity.id;
+                        option.textContent = data.activity.name + ' [Creata ora]';
+                        option.selected = true;
+                        activitySelect.appendChild(option);
+                        alert('Attività creata con successo!');
                     } else {
-                        activitySelect.innerHTML = '<option value="">Nessuna attività disponibile</option>';
+                        alert('Errore nella creazione dell\'attività: ' + (data.message || 'Errore sconosciuto'));
                     }
                 })
                 .catch(error => {
                     console.error('Errore:', error);
-                    activitySelect.innerHTML = '<option value="">Errore nel caricamento</option>';
+                    alert('Errore nella comunicazione con il server');
                 });
-        }
-        
-        // Gestione submit form task
-        document.getElementById('createTaskForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = {
-                name: document.getElementById('task_name').value,
-                activity_id: document.getElementById('task_activity_select').value,
-                estimated_minutes: document.getElementById('task_estimated_minutes').value,
-                due_date: document.getElementById('task_due_date').value,
-                description: document.getElementById('task_description').value,
-                status: 'pending'
-            };
-            
-            fetch('/tasks', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Chiudi il modale
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('createTaskModal'));
-                    modal.hide();
-                    
-                    // Ricarica gli eventi del calendario
-                    calendar.refetchEvents();
-                    
-                    // Mostra messaggio di successo
-                    alert('Task creato con successo!');
-                } else {
-                    alert('Errore nella creazione del task: ' + (data.message || 'Errore sconosciuto'));
-                }
-            })
-            .catch(error => {
-                console.error('Errore:', error);
-                alert('Errore nella comunicazione con il server');
             });
+        }
+    }, 100);
+    
+    const taskModal = new bootstrap.Modal(document.getElementById('createTaskModal'));
+    taskModal.show();
+}
+
+function loadClientsForTask() {
+    fetch('/api/clients')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('task_client_select');
+            select.innerHTML = '<option value="">Seleziona cliente esistente</option>';
+            data.forEach(client => {
+                const option = document.createElement('option');
+                option.value = client.id;
+                option.textContent = client.name;
+                if (client.created_from_tasks) {
+                    option.textContent += ' [Creato da Tasks]';
+                }
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Errore nel caricamento dei clienti:', error);
+            alert('Errore nel caricamento dei clienti');
         });
-        
-        // ============================================
-        // FUNZIONI PER CARICARE I DATI NELLE SELECT
-        // ============================================
-        
-        // Carica progetti per il form attività
-        function loadProjectsForActivity() {
-            fetch('/api/projects')
-                .then(response => response.json())
-                .then(data => {
-                    const select = document.getElementById('activity_project_id');
-                    select.innerHTML = '<option value="">Seleziona un progetto...</option>';
-                    
-                    data.forEach(project => {
-                        const option = document.createElement('option');
-                        option.value = project.id;
-                        option.textContent = project.name + ' (' + project.client_name + ')';
-                        select.appendChild(option);
-                    });
-                })
-                .catch(error => {
-                    console.error('Errore nel caricamento dei progetti:', error);
-                    alert('Errore nel caricamento dei progetti');
+}
+
+function loadProjectsForTaskByClient(clientId) {
+    const projectSelect = document.getElementById('task_project_select');
+    projectSelect.innerHTML = '<option value="">Caricamento...</option>';
+    fetch(`/api/projects-by-client/${clientId}`)
+        .then(response => response.json())
+        .then(data => {
+            projectSelect.innerHTML = '<option value="">Seleziona un progetto</option>';
+            data.projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = project.name;
+                if (project.created_from_tasks) {
+                    option.textContent += ' [Creato da Tasks]';
+                }
+                projectSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            projectSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
+        });
+}
+
+function loadActivitiesForTaskByProject(projectId) {
+    const activitySelect = document.getElementById('task_activity_select');
+    activitySelect.innerHTML = '<option value="">Caricamento...</option>';
+    fetch(`/api/activities-by-project/${projectId}`)
+        .then(response => response.json())
+        .then(data => {
+            activitySelect.innerHTML = '<option value="">Seleziona un\'attività</option>';
+            if (data.activities && data.activities.length > 0) {
+                data.activities.forEach(activity => {
+                    const option = document.createElement('option');
+                    option.value = activity.id;
+                    option.textContent = activity.name;
+                    activitySelect.appendChild(option);
                 });
-        }
-        
-        // Carica risorse per il form attività
-        function loadResourcesForActivity() {
-            fetch('/api/resources')
-                .then(response => response.json())
-                .then(data => {
-                    const select = document.getElementById('activity_resource_id');
-                    select.innerHTML = '<option value="">Nessuna risorsa assegnata</option>';
-                    
-                    data.forEach(resource => {
-                        const option = document.createElement('option');
-                        option.value = resource.id;
-                        option.textContent = resource.name + ' (' + resource.role + ')';
-                        select.appendChild(option);
-                    });
-                })
-                .catch(error => {
-                    console.error('Errore nel caricamento delle risorse:', error);
-                });
-        }
-        
-        // Carica progetti per il form task
-        function loadProjectsForTask() {
-            fetch('/api/projects')
-                .then(response => response.json())
-                .then(data => {
-                    const select = document.getElementById('task_project_id');
-                    select.innerHTML = '<option value="">Seleziona un progetto...</option>';
-                    
-                    data.forEach(project => {
-                        const option = document.createElement('option');
-                        option.value = project.id;
-                        option.textContent = project.name + ' (' + project.client_name + ')';
-                        select.appendChild(option);
-                    });
-                })
-                .catch(error => {
-                    console.error('Errore nel caricamento dei progetti:', error);
-                    alert('Errore nel caricamento dei progetti');
-                });
-        }
-        
-        // Quando si seleziona un progetto nel form attività, carica le aree
-        document.getElementById('activity_project_id').addEventListener('change', function() {
-            const projectId = this.value;
-            const areaSelect = document.getElementById('activity_area_id');
-            
-            if (!projectId) {
-                areaSelect.innerHTML = '<option value="">Prima seleziona un progetto...</option>';
-                return;
+            } else {
+                activitySelect.innerHTML = '<option value="">Nessuna attività disponibile</option>';
             }
-            
-            areaSelect.innerHTML = '<option value="">Caricamento...</option>';
-            
-            fetch(`/api/areas-by-project/${projectId}`)
-                .then(response => response.json())
-                .then(data => {
-                    areaSelect.innerHTML = '<option value="">Seleziona un\'area...</option>';
-                    
-                    if (data.areas && data.areas.length > 0) {
-                        data.areas.forEach(area => {
-                            const option = document.createElement('option');
-                            option.value = area.id;
-                            option.textContent = area.name;
-                            areaSelect.appendChild(option);
-                        });
-                    } else {
-                        areaSelect.innerHTML = '<option value="">Nessuna area disponibile</option>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Errore nel caricamento delle aree:', error);
-                    areaSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
-                });
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            activitySelect.innerHTML = '<option value="">Errore nel caricamento</option>';
         });
-        
-        // Quando si seleziona un progetto nel form task, carica le attività
-        document.getElementById('task_project_id').addEventListener('change', function() {
-            const projectId = this.value;
-            const activitySelect = document.getElementById('task_activity_id');
-            
-            if (!projectId) {
-                activitySelect.innerHTML = '<option value="">Prima seleziona un progetto...</option>';
-                return;
-            }
-            
-            activitySelect.innerHTML = '<option value="">Caricamento...</option>';
-            
-            fetch(`/api/activities-by-project/${projectId}`)
-                .then(response => response.json())
-                .then(data => {
-                    activitySelect.innerHTML = '<option value="">Seleziona un\'attività...</option>';
-                    
-                    if (data.activities && data.activities.length > 0) {
-                        data.activities.forEach(activity => {
-                            const option = document.createElement('option');
-                            option.value = activity.id;
-                            option.textContent = activity.name;
-                            activitySelect.appendChild(option);
-                        });
-                    } else {
-                        activitySelect.innerHTML = '<option value="">Nessuna attività disponibile</option>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Errore nel caricamento delle attività:', error);
-                    activitySelect.innerHTML = '<option value="">Errore nel caricamento</option>';
-                });
+}
+
+function loadProjectsForActivity() {
+    fetch('/api/projects')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('activity_project_id');
+            select.innerHTML = '<option value="">Seleziona un progetto...</option>';
+            data.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = project.name + ' (' + project.client_name + ')';
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Errore nel caricamento dei progetti:', error);
+            alert('Errore nel caricamento dei progetti');
         });
+}
+
+function loadResourcesForActivity() {
+    fetch('/api/resources')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('activity_resource_id');
+            select.innerHTML = '<option value="">Nessuna risorsa assegnata</option>';
+            data.forEach(resource => {
+                const option = document.createElement('option');
+                option.value = resource.id;
+                option.textContent = resource.name + ' (' + resource.role + ')';
+                select.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Errore nel caricamento delle risorse:', error);
+        });
+}
 </script>
 @endpush
