@@ -60,6 +60,7 @@ Route::middleware(['auth'])->group(function () {
     // API activities
     Route::get('/api/activities', [ActivityController::class, 'getAllActivities'])->name('api.activities');
     Route::get('/api/activities/by-project/{project}', [ActivityController::class, 'byProjectForApi'])->name('api.activities.by-project');
+    Route::get('/api/resources-by-project/{project}', [ActivityController::class, 'getResourcesByProject'])->name('api.resources-by-project');
     
     // Prima la rotta specifica timetracking
     Route::get('/tasks/timetracking', TasksTimeTrackingController::class)->name('tasks.timetracking');
@@ -78,7 +79,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/tasks/create-activity', [TaskController::class, 'createActivity'])->name('tasks.create-activity');
     
     // Rotte per AJAX e API interne all'applicazione
-    Route::get('/api/resources-by-project/{project}', [ResourceController::class, 'getByProject'])->name('api.resources-by-project');
+    Route::get('/api/resources-by-project/{project}', [ActivityController::class, 'getResourcesByProject'])->name('api.resources-by-project');
     Route::get('/api/project-summary/{project}', [ProjectController::class, 'getSummary'])->name('api.project-summary');
     Route::get('/api/tasks', [TaskController::class, 'getTasks'])->name('api.tasks');
     Route::put('/api/tasks/{task}/status', [TaskController::class, 'updateStatusApi'])->name('api.tasks.update-status');

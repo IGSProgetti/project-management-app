@@ -722,4 +722,34 @@ public function getAllActivities()
             'activities' => $activities
         ]);
     }
+
+    /**
+ * Get resources by project for activities creation
+ */
+public function getResourcesByProject(string $projectId)
+{
+    try {
+        $project = Project::with('resources')->findOrFail($projectId);
+        
+        // Ottieni le risorse assegnate al progetto
+        $resources = $project->resources->map(function($resource) {
+            return [
+                'id' => $resource->id,
+                'name' => $resource->name,
+                'role' => $resource->role,
+                'hours_type' => $resource->pivot->hours_type ?? 'standard'
+            ];
+        });
+        
+        return response()->json([
+            'success' => true,
+            'resources' => $resources
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Errore nel caricamento delle risorse: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }
