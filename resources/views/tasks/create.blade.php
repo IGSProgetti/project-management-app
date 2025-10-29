@@ -415,6 +415,147 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // ===== GESTIONE NUOVA ATTIVITÀ =====
+    // Form per nuova attività (deve essere creato nell'HTML se non esiste)
+    let newActivityForm = document.getElementById('newActivityForm');
+    
+    // Se il form non esiste nell'HTML, crealo dinamicamente
+    if (!newActivityForm && newActivityBtn) {
+        const activityContainer = document.getElementById('activity_id').parentElement.parentElement;
+        newActivityForm = document.createElement('div');
+        newActivityForm.id = 'newActivityForm';
+        newActivityForm.className = 'mt-3';
+        newActivityForm.style.display = 'none';
+        newActivityForm.innerHTML = `
+            <div class="border rounded p-3 bg-light">
+                <h6><i class="fas fa-plus-circle text-primary"></i> Crea Nuova Attività</h6>
+                <div class="row">
+                    <div class="col-md-12">
+                        <input type="text" 
+                               id="new_activity_name" 
+                               class="form-control mb-2" 
+                               placeholder="Nome attività">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="number" 
+                               id="new_activity_estimated_minutes" 
+                               class="form-control mb-2" 
+                               placeholder="Minuti stimati" 
+                               min="1"
+                               value="60">
+                    </div>
+                    <div class="col-md-6">
+                        <select id="new_activity_hours_type" class="form-select mb-2">
+                            <option value="standard">Ore Standard</option>
+                            <option value="extra">Ore Extra</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <button type="button" class="btn btn-sm btn-success" id="saveNewActivity">
+                        <i class="fas fa-check"></i> Salva Attività
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" id="cancelNewActivity">
+                        <i class="fas fa-times"></i> Annulla
+                    </button>
+                </div>
+            </div>
+        `;
+        activityContainer.appendChild(newActivityForm);
+    }
+    
+    // Click sul bottone "Nuova"
+    newActivityBtn.addEventListener('click', function() {
+        if (!newActivityForm) return;
+        
+        newActivityForm.style.display = newActivityForm.style.display === 'none' ? 'block' : 'none';
+        if (newActivityForm.style.display === 'block') {
+            document.getElementById('new_activity_name').focus();
+        }
+    });
+
+    // Bottone Annulla nuova attività
+    document.addEventListener('click', function(e) {
+        if (e.target.id === 'cancelNewActivity' || e.target.parentElement.id === 'cancelNewActivity') {
+            if (newActivityForm) {
+                newActivityForm.style.display = 'none';
+                document.getElementById('new_activity_name').value = '';
+                document.getElementById('new_activity_estimated_minutes').value = '60';
+                document.getElementById('new_activity_hours_type').value = 'standard';
+            }
+        }
+    });
+
+    // Bottone Salva nuova attività
+    document.addEventListener('click', function(e) {
+        if (e.target.id === 'saveNewActivity' || e.target.parentElement.id === 'saveNewActivity') {
+            const activityName = document.getElementById('new_activity_name').value.trim();
+            const estimatedMinutes = document.getElementById('new_activity_estimated_minutes').value;
+            const hoursType = document.getElementById('new_activity_hours_type').value;
+            const projectId = projectSelect.value;
+
+            if (!activityName) {
+                alert('Il nome dell\'attività è obbligatorio');
+                return;
+            }
+
+            if (!projectId) {
+                alert('Seleziona prima un progetto');
+                return;
+            }
+
+            if (!estimatedMinutes || estimatedMinutes < 1) {
+                alert('Inserisci i minuti stimati (minimo 1)');
+                return;
+            }
+
+            // Crea l'attività via AJAX
+            fetch('/tasks/create-activity', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    name: activityName,
+                    project_id: projectId,
+                    estimated_minutes: parseInt(estimatedMinutes),
+                    hours_type: hoursType
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Aggiungi la nuova attività alla select
+                    const option = document.createElement('option');
+                    option.value = data.activity.id;
+                    option.textContent = data.activity.name;
+                    option.selected = true;
+                    activitySelect.appendChild(option);
+                    
+                    // Nascondi e reset il form
+                    if (newActivityForm) {
+                        newActivityForm.style.display = 'none';
+                        document.getElementById('new_activity_name').value = '';
+                        document.getElementById('new_activity_estimated_minutes').value = '60';
+                        document.getElementById('new_activity_hours_type').value = 'standard';
+                    }
+                    
+                    alert('Attività creata con successo!');
+                } else {
+                    alert('Errore nella creazione dell\'attività: ' + (data.message || 'Errore sconosciuto'));
+                }
+            })
+            .catch(error => {
+                console.error('Errore:', error);
+                alert('Errore nella comunicazione con il server');
+            });
+        }
+    });
+    // ===== FINE GESTIONE NUOVA ATTIVITÀ =====
+
     // Funzione per caricare i progetti
     function loadProjects(clientId) {
         projectSelect.innerHTML = '<option value="">Caricamento...</option>';
