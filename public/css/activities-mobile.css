@@ -1,0 +1,550 @@
+/* ===================================
+   ACTIVITIES MOBILE - CARD VIEW
+   Vista ottimizzata per smartphone
+   =================================== */
+
+/* ===================================
+   1. CONTAINER PRINCIPALE
+   =================================== */
+
+.activities-mobile-container {
+    padding: 10px;
+    background-color: #f5f6fa;
+}
+
+/* Nascondi la tabella su mobile */
+@media (max-width: 768px) {
+    .table-responsive {
+        display: none !important;
+    }
+    
+    .activities-mobile-view {
+        display: block !important;
+    }
+}
+
+/* Mostra la tabella su desktop */
+@media (min-width: 769px) {
+    .activities-mobile-view {
+        display: none !important;
+    }
+}
+
+/* ===================================
+   2. CARD SINGOLA ATTIVITÀ
+   =================================== */
+
+.activity-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.activity-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* ===================================
+   3. HEADER DELLA CARD
+   =================================== */
+
+.activity-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 10px;
+}
+
+.activity-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    flex: 1;
+    line-height: 1.4;
+}
+
+/* Badge di stato */
+.activity-status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-in_progress {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.status-completed {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+/* ===================================
+   4. INFORMAZIONI PRINCIPALI
+   =================================== */
+
+.activity-card-info {
+    margin-bottom: 12px;
+}
+
+.activity-info-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #666;
+}
+
+.activity-info-row:last-child {
+    margin-bottom: 0;
+}
+
+.activity-info-icon {
+    width: 18px;
+    margin-right: 8px;
+    color: #2196F3;
+    flex-shrink: 0;
+}
+
+.activity-info-label {
+    font-weight: 500;
+    margin-right: 6px;
+    color: #333;
+}
+
+.activity-info-value {
+    color: #666;
+}
+
+/* Badge tipo ore */
+.hours-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.hours-type-standard {
+    background-color: #e3f2fd;
+    color: #1976D2;
+}
+
+.hours-type-extra {
+    background-color: #fff3e0;
+    color: #e65100;
+}
+
+/* ===================================
+   5. SEZIONE RISORSE
+   =================================== */
+
+.activity-resources-section {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.activity-resources-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.activity-resource-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.activity-resource-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.activity-resource-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+}
+
+.activity-resource-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #2196F3;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.activity-resource-hours {
+    font-size: 12px;
+    color: #666;
+}
+
+/* ===================================
+   6. SEZIONE TEMPO E COSTI
+   =================================== */
+
+.activity-card-metrics {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.activity-metrics-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+.activity-metrics-row:last-child {
+    margin-bottom: 0;
+}
+
+.activity-metrics-label {
+    color: #666;
+    font-weight: 500;
+}
+
+.activity-metrics-value {
+    color: #333;
+    font-weight: 600;
+}
+
+.activity-metrics-value.positive {
+    color: #4CAF50;
+}
+
+.activity-metrics-value.negative {
+    color: #f44336;
+}
+
+/* ===================================
+   7. BARRA DI PROGRESSO
+   =================================== */
+
+.activity-progress-section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e9ecef;
+}
+
+.activity-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.activity-progress-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+}
+
+.activity-progress-percentage {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+}
+
+.activity-progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.activity-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+.activity-progress-fill.low {
+    background: linear-gradient(90deg, #f44336 0%, #e57373 100%);
+}
+
+.activity-progress-fill.medium {
+    background: linear-gradient(90deg, #FFC107 0%, #FFD54F 100%);
+}
+
+.activity-progress-fill.high {
+    background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
+}
+
+/* ===================================
+   8. PULSANTI AZIONE
+   =================================== */
+
+.activity-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.activity-action-btn {
+    flex: 1;
+    min-width: 90px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
+}
+
+.activity-action-btn:active {
+    transform: scale(0.95);
+}
+
+/* Pulsante Visualizza */
+.btn-view {
+    background-color: #2196F3;
+    color: white;
+}
+
+.btn-view:active {
+    background-color: #1976D2;
+}
+
+/* Pulsante Modifica */
+.btn-edit {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.btn-edit:active {
+    background-color: #45a049;
+}
+
+/* Pulsante Elimina */
+.btn-delete {
+    background-color: #f44336;
+    color: white;
+}
+
+.btn-delete:active {
+    background-color: #d32f2f;
+}
+
+/* ===================================
+   9. AREA BADGE
+   =================================== */
+
+.activity-area-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ===================================
+   10. SCADENZA EVIDENZIATA
+   =================================== */
+
+.activity-due-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.activity-due-date.overdue {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.activity-due-date.today {
+    background-color: #fff3e0;
+    color: #e65100;
+}
+
+.activity-due-date.upcoming {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+/* ===================================
+   11. MESSAGGI STATO
+   =================================== */
+
+.no-activities-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.no-activities-message i {
+    font-size: 48px;
+    color: #ccc;
+    margin-bottom: 16px;
+}
+
+.no-activities-message p {
+    font-size: 16px;
+    margin: 0;
+}
+
+/* ===================================
+   12. LOADING INDICATOR
+   =================================== */
+
+.activities-loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+}
+
+.activities-loading i {
+    font-size: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ===================================
+   13. ANIMAZIONI
+   =================================== */
+
+.activity-card {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===================================
+   14. ACCESSIBILITÀ
+   =================================== */
+
+.activity-action-btn:focus {
+    outline: 2px solid #2196F3;
+    outline-offset: 2px;
+}
+
+/* ===================================
+   15. RESPONSIVE FINE-TUNING
+   =================================== */
+
+/* Per schermi molto piccoli */
+@media (max-width: 360px) {
+    .activity-card {
+        padding: 12px;
+    }
+    
+    .activity-card-title {
+        font-size: 15px;
+    }
+    
+    .activity-action-btn {
+        min-width: 80px;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+}
+
+/* Per schermi medi (tablet portrait) */
+@media (min-width: 768px) and (max-width: 991px) {
+    .activities-mobile-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding: 16px;
+    }
+    
+    .activity-card {
+        margin-bottom: 0;
+    }
+}
+
+/* ===================================
+   16. COSTO STIMATO HIGHLIGHT
+   =================================== */
+
+.activity-cost-highlight {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+    text-align: center;
+}
+
+.activity-cost-label {
+    font-size: 11px;
+    opacity: 0.9;
+    margin-bottom: 2px;
+}
+
+.activity-cost-value {
+    font-size: 18px;
+    font-weight: 700;
+}

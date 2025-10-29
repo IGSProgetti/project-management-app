@@ -1,0 +1,563 @@
+/* ===================================
+   PROJECTS MOBILE - CARD VIEW
+   Vista ottimizzata per smartphone
+   =================================== */
+
+/* ===================================
+   1. CONTAINER PRINCIPALE
+   =================================== */
+
+.projects-mobile-container {
+    padding: 10px;
+    background-color: #f5f6fa;
+}
+
+/* Nascondi la tabella su mobile */
+@media (max-width: 768px) {
+    .table-responsive {
+        display: none !important;
+    }
+    
+    .projects-mobile-view {
+        display: block !important;
+    }
+}
+
+/* Mostra la tabella su desktop */
+@media (min-width: 769px) {
+    .projects-mobile-view {
+        display: none !important;
+    }
+}
+
+/* ===================================
+   2. CARD SINGOLA PROJECT
+   =================================== */
+
+.project-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.project-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* Indicatore per progetti creati da tasks */
+.project-card.created-from-tasks {
+    border-left: 4px solid #FFC107;
+}
+
+/* ===================================
+   3. HEADER DELLA CARD
+   =================================== */
+
+.project-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 10px;
+}
+
+.project-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    flex: 1;
+    line-height: 1.4;
+}
+
+/* Badge di stato */
+.project-status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-in_progress {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.status-completed {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-on_hold {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* ===================================
+   4. INFORMAZIONI PRINCIPALI
+   =================================== */
+
+.project-card-info {
+    margin-bottom: 12px;
+}
+
+.project-info-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #666;
+}
+
+.project-info-row:last-child {
+    margin-bottom: 0;
+}
+
+.project-info-icon {
+    width: 18px;
+    margin-right: 8px;
+    color: #2196F3;
+    flex-shrink: 0;
+}
+
+.project-info-label {
+    font-weight: 500;
+    margin-right: 6px;
+    color: #333;
+}
+
+.project-info-value {
+    color: #666;
+}
+
+/* ===================================
+   5. DESCRIZIONE PROGETTO
+   =================================== */
+
+.project-description {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #666;
+    line-height: 1.5;
+}
+
+.project-description.empty {
+    font-style: italic;
+    color: #999;
+}
+
+/* ===================================
+   6. SEZIONE BUDGET E PROGRESSO
+   =================================== */
+
+.project-card-budget {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.project-budget-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+.project-budget-row:last-child {
+    margin-bottom: 0;
+}
+
+.project-budget-label {
+    color: #666;
+    font-weight: 500;
+}
+
+.project-budget-value {
+    color: #333;
+    font-weight: 600;
+}
+
+.project-budget-value.positive {
+    color: #4CAF50;
+}
+
+.project-budget-value.negative {
+    color: #f44336;
+}
+
+/* Barra di progresso */
+.project-progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.project-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2196F3 0%, #64B5F6 100%);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+.project-progress-fill.low {
+    background: linear-gradient(90deg, #f44336 0%, #e57373 100%);
+}
+
+.project-progress-fill.medium {
+    background: linear-gradient(90deg, #FFC107 0%, #FFD54F 100%);
+}
+
+.project-progress-fill.high {
+    background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
+}
+
+.project-progress-text {
+    text-align: right;
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+    font-weight: 600;
+}
+
+/* ===================================
+   7. SEZIONE DATE
+   =================================== */
+
+.project-dates {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.project-date-item {
+    flex: 1;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 8px;
+    text-align: center;
+}
+
+.project-date-label {
+    font-size: 11px;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.project-date-value {
+    font-size: 13px;
+    color: #333;
+    font-weight: 600;
+}
+
+/* ===================================
+   8. PULSANTI AZIONE
+   =================================== */
+
+.project-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.project-action-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.project-action-btn:active {
+    transform: scale(0.95);
+}
+
+/* Pulsante Visualizza */
+.btn-view {
+    background-color: #2196F3;
+    color: white;
+}
+
+.btn-view:active {
+    background-color: #1976D2;
+}
+
+/* Pulsante Modifica */
+.btn-edit {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.btn-edit:active {
+    background-color: #45a049;
+}
+
+/* Pulsante Elimina */
+.btn-delete {
+    background-color: #f44336;
+    color: white;
+}
+
+.btn-delete:active {
+    background-color: #d32f2f;
+}
+
+/* ===================================
+   9. BADGE CLIENTE
+   =================================== */
+
+.project-client-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background-color: #e3f2fd;
+    color: #1976D2;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.project-client-badge.from-tasks {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+/* ===================================
+   10. BADGE WARNING TASKS
+   =================================== */
+
+.project-warning-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: #fff3cd;
+    color: #856404;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 12px;
+}
+
+.project-warning-badge i {
+    font-size: 14px;
+}
+
+/* ===================================
+   11. MESSAGGI STATO
+   =================================== */
+
+.no-projects-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.no-projects-message i {
+    font-size: 48px;
+    color: #ccc;
+    margin-bottom: 16px;
+}
+
+.no-projects-message p {
+    font-size: 16px;
+    margin: 0;
+}
+
+/* ===================================
+   12. LOADING INDICATOR
+   =================================== */
+
+.projects-loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+}
+
+.projects-loading i {
+    font-size: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ===================================
+   13. RISORSE ASSEGNATE
+   =================================== */
+
+.project-resources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.resource-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.resource-chip i {
+    margin-right: 4px;
+    font-size: 10px;
+}
+
+/* ===================================
+   14. STATS INLINE
+   =================================== */
+
+.project-stats-inline {
+    display: flex;
+    justify-content: space-around;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.stat-item {
+    text-align: center;
+    flex: 1;
+}
+
+.stat-icon {
+    font-size: 16px;
+    color: #2196F3;
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+}
+
+.stat-label {
+    font-size: 10px;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ===================================
+   15. ANIMAZIONI
+   =================================== */
+
+.project-card {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===================================
+   16. ACCESSIBILITÀ
+   =================================== */
+
+.project-action-btn:focus {
+    outline: 2px solid #2196F3;
+    outline-offset: 2px;
+}
+
+/* ===================================
+   17. RESPONSIVE FINE-TUNING
+   =================================== */
+
+/* Per schermi molto piccoli */
+@media (max-width: 360px) {
+    .project-card {
+        padding: 12px;
+    }
+    
+    .project-card-title {
+        font-size: 15px;
+    }
+    
+    .project-action-btn {
+        min-width: 70px;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+    
+    .project-stats-inline {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .stat-item {
+        border-bottom: 1px solid #e0e0e0;
+        padding-bottom: 8px;
+    }
+    
+    .stat-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+}
+
+/* Per schermi medi (tablet portrait) */
+@media (min-width: 768px) and (max-width: 991px) {
+    .projects-mobile-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding: 16px;
+    }
+    
+    .project-card {
+        margin-bottom: 0;
+    }
+}

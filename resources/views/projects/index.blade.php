@@ -2,6 +2,10 @@
 
 @section('title', 'Gestione Progetti')
 
+@push('styles')
+<link href="{{ asset('css/projects-mobile.css') }}" rel="stylesheet">
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <div class="row mb-4">
@@ -99,269 +103,231 @@
             <h5>Elenco Progetti</h5>
         </div>
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped" id="projectsTable">
-                    <thead>
-                        <tr>
-                            <th>Nome Progetto</th>
-                            <th>Cliente</th>
-                            <th>Stato</th>
-                            <th>Progresso</th>
-                            <th>Costo Totale</th>
-                            <th>Origine</th>
-                            <th>Azioni</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($projects as $project)
-                        <tr class="{{ $project->created_from_tasks ? 'table-warning' : '' }}" 
-                            data-created-from="{{ $project->created_from_tasks ? 'tasks' : 'normal' }}">
-                            <td>
-                                <strong>{{ $project->name }}</strong>
-                                @if($project->created_from_tasks)
-                                    <br><small class="text-muted">Creato il {{ $project->tasks_created_at->format('d/m/Y H:i') }}</small>
-                                @endif
-                                @if($project->description)
-                                    <br><small class="text-muted">{{ Str::limit($project->description, 50) }}</small>
-                                @endif
-                            </td>
-                            <td>
-                                <a href="{{ route('clients.show', $project->client->id) }}">
-                                    {{ $project->client->name }}
-                                </a>
-                                @if($project->client->created_from_tasks)
-                                    <br><span class="badge bg-warning badge-sm">Cliente da Tasks</span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($project->status == 'pending')
-                                    <span class="badge bg-warning">In attesa</span>
-                                @elseif($project->status == 'in_progress')
-                                    <span class="badge bg-primary">In corso</span>
-                                @elseif($project->status == 'completed')
-                                    <span class="badge bg-success">Completato</span>
-                                @elseif($project->status == 'on_hold')
-                                    <span class="badge bg-secondary">In pausa</span>
-                                @endif
-                            </td>
-                            <td>
-                                <div class="progress mb-1" style="height: 8px;">
-                                    <div class="progress-bar {{ $project->progress_percentage > 90 ? 'bg-success' : ($project->progress_percentage > 50 ? 'bg-info' : 'bg-warning') }}" 
-                                         role="progressbar" 
-                                         style="width: {{ $project->progress_percentage }}%"></div>
-                                </div>
-                                <small class="text-muted">{{ $project->progress_percentage }}%</small>
-                            </td>
-                            <td>
-                                {{ number_format($project->total_cost, 2) }} €
-                                @if($project->activities_count > 0)
-                                    <br><small class="text-muted">{{ $project->activities_count }} attività</small>
-                                @endif
-                            </td>
-                            <td>
-                                @if($project->created_from_tasks)
-                                    <span class="badge bg-warning">
-                                        <i class="fas fa-tasks"></i> Da Tasks
-                                    </span>
-                                    <br><small class="text-warning">Da consolidare</small>
-                                @else
-                                    <span class="badge bg-success">
-                                        <i class="fas fa-project-diagram"></i> Standard
-                                    </span>
-                                @endif
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{{ route('projects.show', $project->id) }}" class="btn btn-outline-info" title="Visualizza">
+            @if(isset($projects) && $projects->count() > 0)
+                <!-- VISTA TABELLA (Desktop) -->
+                <div class="table-responsive">
+                    <table class="table table-striped" id="projectsTable">
+                        <thead>
+                            <tr>
+                                <th>Nome Progetto</th>
+                                <th>Cliente</th>
+                                <th>Stato</th>
+                                <th>Progresso</th>
+                                <th>Costo Totale</th>
+                                <th>Origine</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($projects as $project)
+                            <tr class="{{ $project->created_from_tasks ? 'table-warning' : '' }}" 
+                                data-created-from="{{ $project->created_from_tasks ? 'tasks' : 'normal' }}"
+                                data-client="{{ $project->client_id }}"
+                                data-status="{{ $project->status }}">
+                                <td>
+                                    <strong>{{ $project->name }}</strong>
+                                    @if($project->created_from_tasks)
+                                        <br><small class="text-muted">Creato il {{ $project->tasks_created_at->format('d/m/Y H:i') }}</small>
+                                    @endif
+                                    @if($project->description)
+                                        <br><small class="text-muted">{{ Str::limit($project->description, 50) }}</small>
+                                    @endif
+                                </td>
+                                <td>
+                                    <a href="{{ route('clients.show', $project->client->id) }}">
+                                        {{ $project->client->name }}
+                                    </a>
+                                    @if($project->client->created_from_tasks)
+                                        <br><span class="badge bg-warning badge-sm">Cliente da Tasks</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($project->status == 'pending')
+                                        <span class="badge bg-warning">In attesa</span>
+                                    @elseif($project->status == 'in_progress')
+                                        <span class="badge bg-primary">In corso</span>
+                                    @elseif($project->status == 'completed')
+                                        <span class="badge bg-success">Completato</span>
+                                    @elseif($project->status == 'on_hold')
+                                        <span class="badge bg-secondary">In pausa</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div class="progress mb-1" style="height: 8px;">
+                                        <div class="progress-bar {{ $project->progress_percentage > 90 ? 'bg-success' : ($project->progress_percentage > 50 ? 'bg-info' : 'bg-warning') }}" 
+                                             role="progressbar" 
+                                             style="width: {{ $project->progress_percentage }}%"
+                                             aria-valuenow="{{ $project->progress_percentage }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    <small>{{ $project->progress_percentage }}%</small>
+                                </td>
+                                <td>{{ number_format($project->total_cost, 2) }} €</td>
+                                <td>
+                                    @if($project->created_from_tasks)
+                                        <span class="badge bg-warning">Da Tasks</span>
+                                    @else
+                                        <span class="badge bg-info">Normale</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <a href="{{ route('projects.show', $project->id) }}" class="btn btn-sm btn-info">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="{{ route('projects.edit', $project->id) }}" class="btn btn-outline-warning" title="Modifica">
+                                    <a href="{{ route('projects.edit', $project->id) }}" class="btn btn-sm btn-primary">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    
-                                    @if($project->created_from_tasks)
-                                        <!-- Dropdown per azioni specifiche progetti da tasks -->
-                                        <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-                                                <i class="fas fa-cogs"></i>
-                                            </button>
-                                            <ul class="dropdown-menu">
-                                                <li>
-                                                    <button class="dropdown-item consolidate-project-btn" 
-                                                            data-project-id="{{ $project->id }}" 
-                                                            data-project-name="{{ $project->name }}">
-                                                        <i class="fas fa-check-circle text-success"></i> Consolida Progetto
-                                                    </button>
-                                                </li>
-                                                @if($project->activities_count > 0)
-                                                <li>
-                                                    <button class="dropdown-item reassign-tasks-btn" 
-                                                            data-project-id="{{ $project->id }}" 
-                                                            data-project-name="{{ $project->name }}">
-                                                        <i class="fas fa-exchange-alt text-info"></i> Riassegna Tasks
-                                                    </button>
-                                                </li>
-                                                @endif
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <form action="{{ route('projects.destroy', $project->id) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="dropdown-item text-danger" 
-                                                                onclick="return confirm('Eliminare questo progetto? Tutti i tasks verranno eliminati!')">
-                                                            <i class="fas fa-trash"></i> Elimina Progetto
-                                                        </button>
-                                                    </form>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    @else
-                                        <!-- Azioni standard per progetti normali -->
-                                        @if($project->activities_count == 0)
-                                            <form action="{{ route('projects.destroy', $project->id) }}" method="POST" class="d-inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-outline-danger" 
-                                                        onclick="return confirm('Sei sicuro di voler eliminare questo progetto?')"
-                                                        title="Elimina">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        @endif
+                                    <form action="{{ route('projects.destroy', $project->id) }}" method="POST" style="display: inline;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Sei sicuro di voler eliminare questo progetto?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- VISTA CARD (Mobile) -->
+                <div class="projects-mobile-view">
+                    <div class="projects-mobile-container">
+                        @foreach($projects as $project)
+                            <div class="project-card {{ $project->created_from_tasks ? 'created-from-tasks' : '' }}"
+                                 data-created-from="{{ $project->created_from_tasks ? 'tasks' : 'normal' }}"
+                                 data-client="{{ $project->client_id }}"
+                                 data-status="{{ $project->status }}">
+                                
+                                <!-- Warning Badge per progetti da tasks -->
+                                @if($project->created_from_tasks)
+                                <div class="project-warning-badge">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Creato da Tasks il {{ $project->tasks_created_at->format('d/m/Y H:i') }}
+                                </div>
+                                @endif
+
+                                <!-- Header -->
+                                <div class="project-card-header">
+                                    <h3 class="project-card-title">{{ $project->name }}</h3>
+                                    <span class="project-status-badge status-{{ $project->status }}">
+                                        {{ ucfirst(str_replace('_', ' ', $project->status)) }}
+                                    </span>
+                                </div>
+
+                                <!-- Descrizione -->
+                                @if($project->description)
+                                <div class="project-description">
+                                    {{ $project->description }}
+                                </div>
+                                @else
+                                <div class="project-description empty">
+                                    Nessuna descrizione disponibile
+                                </div>
+                                @endif
+
+                                <!-- Informazioni Cliente -->
+                                <div class="project-card-info">
+                                    <div class="project-info-row">
+                                        <i class="fas fa-building project-info-icon"></i>
+                                        <span class="project-info-label">Cliente:</span>
+                                        <span class="project-client-badge {{ $project->client->created_from_tasks ? 'from-tasks' : '' }}">
+                                            {{ $project->client->name }}
+                                            @if($project->client->created_from_tasks)
+                                                <i class="fas fa-exclamation-circle"></i>
+                                            @endif
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Date Progetto -->
+                                @if($project->start_date || $project->end_date)
+                                <div class="project-dates">
+                                    @if($project->start_date)
+                                    <div class="project-date-item">
+                                        <div class="project-date-label">Inizio</div>
+                                        <div class="project-date-value">{{ $project->start_date->format('d/m/Y') }}</div>
+                                    </div>
+                                    @endif
+                                    @if($project->end_date)
+                                    <div class="project-date-item">
+                                        <div class="project-date-label">Fine</div>
+                                        <div class="project-date-value">{{ $project->end_date->format('d/m/Y') }}</div>
+                                    </div>
                                     @endif
                                 </div>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
+                                @endif
 
-<!-- Modal per consolidare progetto -->
-<div class="modal fade" id="consolidateProjectModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Consolida Progetto</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="consolidateProjectForm" method="POST">
-                @csrf
-                @method('PATCH')
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i>
-                        <strong>Consolidamento Progetto</strong><br>
-                        Stai per consolidare un progetto creato automaticamente dai tasks. 
-                        Completa le informazioni mancanti per renderlo un progetto ufficiale.
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="consolidate_description">Descrizione Dettagliata</label>
-                            <textarea name="description" id="consolidate_description" class="form-control" rows="3" 
-                                      placeholder="Descrizione completa del progetto..."></textarea>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="consolidate_start_date">Data Inizio</label>
-                            <input type="date" name="start_date" id="consolidate_start_date" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="consolidate_end_date">Data Fine Prevista</label>
-                            <input type="date" name="end_date" id="consolidate_end_date" class="form-control">
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="consolidate_hours_type">Tipo Ore Standard</label>
-                            <select name="default_hours_type" id="consolidate_hours_type" class="form-select">
-                                <option value="standard">Standard</option>
-                                <option value="extra">Extra</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label>Step di Costo Attivi</label>
-                            <div class="form-check-container">
-                                @php
-                                $costSteps = [
-                                    1 => 'Costo struttura (25%)',
-                                    2 => 'Utile gestore azienda (12.5%)',
-                                    3 => 'Utile IGS (12.5%)',
-                                    4 => 'Compenso professionista (20%)',
-                                    5 => 'Bonus professionista (5%)',
-                                    6 => 'Gestore società (3%)',
-                                    7 => 'Chi porta il lavoro (8%)',
-                                    8 => 'Network IGS (14%)'
-                                ];
-                                @endphp
-                                @foreach($costSteps as $step => $label)
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" name="cost_steps[]" value="{{ $step }}" id="step{{ $step }}" checked>
-                                    <label class="form-check-label" for="step{{ $step }}">{{ $step }}</label>
+                                <!-- Budget e Progresso -->
+                                <div class="project-card-budget">
+                                    <div class="project-budget-row">
+                                        <span class="project-budget-label">💰 Costo Totale:</span>
+                                        <span class="project-budget-value">{{ number_format($project->total_cost, 2) }} €</span>
+                                    </div>
+                                    
+                                    <!-- Barra Progresso -->
+                                    <div class="project-progress-bar">
+                                        @php
+                                            $progressClass = 'high';
+                                            if ($project->progress_percentage < 50) {
+                                                $progressClass = 'low';
+                                            } elseif ($project->progress_percentage < 90) {
+                                                $progressClass = 'medium';
+                                            }
+                                        @endphp
+                                        <div class="project-progress-fill {{ $progressClass }}" style="width: {{ $project->progress_percentage }}%"></div>
+                                    </div>
+                                    <div class="project-progress-text">{{ $project->progress_percentage }}% completato</div>
                                 </div>
-                                @endforeach
-                            </div>
-                            <small class="text-muted">Deseleziona gli step non applicabili a questo progetto</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-check"></i> Consolida Progetto
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
-<!-- Modal per riassegnare tasks -->
-<div class="modal fade" id="reassignTasksModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Riassegna Tasks</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="reassignTasksForm" method="POST">
-                @csrf
-                <div class="modal-body">
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exchange-alt"></i>
-                        <strong>Riassegnazione Tasks</strong><br>
-                        Seleziona i tasks da spostare e il progetto di destinazione. 
-                        I tasks verranno spostati in attività equivalenti o nuove.
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="target_project_id">Progetto di Destinazione</label>
-                        <select name="target_project_id" id="target_project_id" class="form-select" required>
-                            <option value="">Seleziona progetto di destinazione</option>
-                            @foreach($projects->where('created_from_tasks', false) as $targetProject)
-                                <option value="{{ $targetProject->id }}">{{ $targetProject->name }} ({{ $targetProject->client->name }})</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    
-                    <div id="tasksListContainer">
-                        <!-- I tasks verranno caricati dinamicamente via AJAX -->
+                                <!-- Stats Inline -->
+                                <div class="project-stats-inline">
+                                    <div class="stat-item">
+                                        <div class="stat-icon"><i class="fas fa-tasks"></i></div>
+                                        <div class="stat-value">{{ $project->activities->count() }}</div>
+                                        <div class="stat-label">Attività</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-icon"><i class="fas fa-users"></i></div>
+                                        <div class="stat-value">{{ $project->resources->count() }}</div>
+                                        <div class="stat-label">Risorse</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                                        <div class="stat-value">{{ $project->activities->where('status', 'completed')->count() }}</div>
+                                        <div class="stat-label">Completate</div>
+                                    </div>
+                                </div>
+
+                                <!-- Pulsanti Azione -->
+                                <div class="project-card-actions">
+                                    <a href="{{ route('projects.show', $project->id) }}" class="project-action-btn btn-view">
+                                        <i class="fas fa-eye"></i> Visualizza
+                                    </a>
+                                    <a href="{{ route('projects.edit', $project->id) }}" class="project-action-btn btn-edit">
+                                        <i class="fas fa-edit"></i> Modifica
+                                    </a>
+                                    <form action="{{ route('projects.destroy', $project->id) }}" method="POST" style="display: inline; flex: 1;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="project-action-btn btn-delete" style="width: 100%;" onclick="return confirm('Sei sicuro di voler eliminare questo progetto?')">
+                                            <i class="fas fa-trash"></i> Elimina
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-exchange-alt"></i> Riassegna Tasks Selezionati
-                    </button>
+            @else
+                <div class="no-projects-message">
+                    <i class="fas fa-folder-open"></i>
+                    <p>Nessun progetto disponibile</p>
                 </div>
-            </form>
+            @endif
         </div>
     </div>
 </div>
@@ -370,90 +336,67 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Gestione consolidamento progetto
-    const consolidateProjectButtons = document.querySelectorAll('.consolidate-project-btn');
-    const consolidateProjectModal = new bootstrap.Modal(document.getElementById('consolidateProjectModal'));
-    const consolidateProjectForm = document.getElementById('consolidateProjectForm');
-
-    consolidateProjectButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const projectId = this.dataset.projectId;
-            const projectName = this.dataset.projectName;
-            
-            document.querySelector('#consolidateProjectModal .modal-title').textContent = `Consolida Progetto: ${projectName}`;
-            consolidateProjectForm.action = `/projects/${projectId}/consolidate`;
-            
-            consolidateProjectModal.show();
-        });
+    // Inizializza i tooltip
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
     });
-
-    // Gestione riassegnazione tasks
-    const reassignTasksButtons = document.querySelectorAll('.reassign-tasks-btn');
-    const reassignTasksModal = new bootstrap.Modal(document.getElementById('reassignTasksModal'));
-    const reassignTasksForm = document.getElementById('reassignTasksForm');
-
-    reassignTasksButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const projectId = this.dataset.projectId;
-            const projectName = this.dataset.projectName;
-            
-            document.querySelector('#reassignTasksModal .modal-title').textContent = `Riassegna Tasks da: ${projectName}`;
-            reassignTasksForm.action = `/projects/${projectId}/reassign-tasks`;
-            
-            // Carica i tasks del progetto
-            loadProjectTasks(projectId);
-            
-            reassignTasksModal.show();
-        });
-    });
-
-    // Funzione per caricare i tasks di un progetto
-    function loadProjectTasks(projectId) {
-        const container = document.getElementById('tasksListContainer');
-        container.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Caricamento tasks...</div>';
+    
+    // Gestione filtri
+    const filterClient = document.getElementById('filterClient');
+    const filterStatus = document.getElementById('filterStatus');
+    const filterCreatedFrom = document.getElementById('filterCreatedFrom');
+    const table = document.getElementById('projectsTable');
+    
+    // Applica filtri lato client (per le card mobile)
+    function applyClientFilters() {
+        const clientFilter = filterClient ? filterClient.value : '';
+        const statusFilter = filterStatus ? filterStatus.value : '';
+        const createdFromFilter = filterCreatedFrom ? filterCreatedFrom.value : '';
         
-        fetch(`/api/project-tasks/${projectId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.tasks.length > 0) {
-                    let html = '<h6>Seleziona i tasks da riassegnare:</h6>';
-                    html += '<div class="form-check mb-2">';
-                    html += '<input class="form-check-input" type="checkbox" id="selectAllTasks">';
-                    html += '<label class="form-check-label" for="selectAllTasks"><strong>Seleziona tutti</strong></label>';
-                    html += '</div><hr>';
-                    
-                    data.tasks.forEach(task => {
-                        html += '<div class="form-check mb-2">';
-                        html += `<input class="form-check-input task-checkbox" type="checkbox" name="task_ids[]" value="${task.id}" id="task_${task.id}">`;
-                        html += `<label class="form-check-label" for="task_${task.id}">`;
-                        html += `<strong>${task.name}</strong><br>`;
-                        html += `<small class="text-muted">Attività: ${task.activity_name} | Stato: ${task.status} | ${task.estimated_minutes} min</small>`;
-                        html += '</label>';
-                        html += '</div>';
-                    });
-                    
-                    container.innerHTML = html;
-                    
-                    // Gestione "seleziona tutti"
-                    document.getElementById('selectAllTasks').addEventListener('change', function() {
-                        const checkboxes = document.querySelectorAll('.task-checkbox');
-                        checkboxes.forEach(cb => cb.checked = this.checked);
-                    });
-                    
-                } else {
-                    container.innerHTML = '<div class="alert alert-info">Nessun task trovato per questo progetto.</div>';
-                }
-            })
-            .catch(error => {
-                console.error('Errore:', error);
-                container.innerHTML = '<div class="alert alert-danger">Errore nel caricamento dei tasks.</div>';
-            });
+        // Filtra righe tabella (desktop)
+        const rows = table ? table.querySelectorAll('tbody tr') : [];
+        
+        // Filtra card (mobile)
+        const cards = document.querySelectorAll('.project-card');
+        
+        // Funzione comune per controllare i filtri
+        function shouldShow(element) {
+            const clientMatch = !clientFilter || element.dataset.client === clientFilter;
+            const statusMatch = !statusFilter || element.dataset.status === statusFilter;
+            
+            let createdFromMatch = true;
+            if (createdFromFilter) {
+                const isFromTasks = element.dataset.createdFrom === 'tasks';
+                createdFromMatch = (createdFromFilter === 'tasks' && isFromTasks) || 
+                                   (createdFromFilter === 'normal' && !isFromTasks);
+            }
+            
+            return clientMatch && statusMatch && createdFromMatch;
+        }
+        
+        // Applica filtri alle righe della tabella
+        rows.forEach(row => {
+            row.style.display = shouldShow(row) ? '' : 'none';
+        });
+        
+        // Applica filtri alle card
+        cards.forEach(card => {
+            card.style.display = shouldShow(card) ? 'block' : 'none';
+        });
     }
-
-    // Funzione per mostrare solo progetti creati da tasks
+    
+    // Event listeners per i filtri
+    if (filterClient) filterClient.addEventListener('change', applyClientFilters);
+    if (filterStatus) filterStatus.addEventListener('change', applyClientFilters);
+    if (filterCreatedFrom) filterCreatedFrom.addEventListener('change', applyClientFilters);
+    
+    // Funzione per mostrare solo progetti da tasks (richiamata dal pulsante nell'alert)
     window.showOnlyTasksCreated = function() {
-        document.getElementById('filterCreatedFrom').value = 'tasks';
-        document.getElementById('filterForm').submit();
+        if (filterCreatedFrom) {
+            filterCreatedFrom.value = 'tasks';
+            applyClientFilters();
+        }
     };
 });
 </script>

@@ -1,0 +1,432 @@
+/* ===================================
+   TASKS MOBILE - CARD VIEW
+   Vista ottimizzata per smartphone
+   =================================== */
+
+/* ===================================
+   1. CONTAINER PRINCIPALE
+   =================================== */
+
+.tasks-mobile-container {
+    padding: 10px;
+    background-color: #f5f6fa;
+}
+
+/* Nascondi la tabella su mobile */
+@media (max-width: 768px) {
+    .table-responsive {
+        display: none !important;
+    }
+    
+    .tasks-mobile-view {
+        display: block !important;
+    }
+}
+
+/* Mostra la tabella su desktop */
+@media (min-width: 769px) {
+    .tasks-mobile-view {
+        display: none !important;
+    }
+}
+
+/* ===================================
+   2. CARD SINGOLA TASK
+   =================================== */
+
+.task-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.task-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* ===================================
+   3. HEADER DELLA CARD
+   =================================== */
+
+.task-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 10px;
+}
+
+.task-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    flex: 1;
+    line-height: 1.4;
+}
+
+/* Badge di stato */
+.task-status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-in_progress {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.status-completed {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+/* ===================================
+   4. INFORMAZIONI PRINCIPALI
+   =================================== */
+
+.task-card-info {
+    margin-bottom: 12px;
+}
+
+.task-info-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #666;
+}
+
+.task-info-row:last-child {
+    margin-bottom: 0;
+}
+
+.task-info-icon {
+    width: 18px;
+    margin-right: 8px;
+    color: #2196F3;
+    flex-shrink: 0;
+}
+
+.task-info-label {
+    font-weight: 500;
+    margin-right: 6px;
+    color: #333;
+}
+
+.task-info-value {
+    color: #666;
+}
+
+/* ===================================
+   5. SEZIONE TEMPO E PROGRESSO
+   =================================== */
+
+.task-card-time {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.task-time-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+.task-time-row:last-child {
+    margin-bottom: 0;
+}
+
+.task-time-label {
+    color: #666;
+    font-weight: 500;
+}
+
+.task-time-value {
+    color: #333;
+    font-weight: 600;
+}
+
+/* Barra di progresso */
+.task-progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.task-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+.task-progress-fill.low {
+    background: linear-gradient(90deg, #f44336 0%, #e57373 100%);
+}
+
+.task-progress-fill.medium {
+    background: linear-gradient(90deg, #FFC107 0%, #FFD54F 100%);
+}
+
+.task-progress-fill.high {
+    background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
+}
+
+.task-progress-text {
+    text-align: right;
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+    font-weight: 600;
+}
+
+/* ===================================
+   6. PULSANTI AZIONE
+   =================================== */
+
+.task-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.task-action-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.task-action-btn:active {
+    transform: scale(0.95);
+}
+
+/* Pulsante Timer */
+.btn-timer {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.btn-timer:active {
+    background-color: #45a049;
+}
+
+/* Pulsante Modifica */
+.btn-edit {
+    background-color: #2196F3;
+    color: white;
+}
+
+.btn-edit:active {
+    background-color: #1976D2;
+}
+
+/* Pulsante Elimina */
+.btn-delete {
+    background-color: #f44336;
+    color: white;
+}
+
+.btn-delete:active {
+    background-color: #d32f2f;
+}
+
+/* Pulsante Dettagli */
+.btn-details {
+    background-color: #FF9800;
+    color: white;
+}
+
+.btn-details:active {
+    background-color: #F57C00;
+}
+
+/* ===================================
+   7. BADGE RISORSA
+   =================================== */
+
+.task-resource-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background-color: #e3f2fd;
+    color: #1976D2;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.task-resource-badge.unassigned {
+    background-color: #f5f5f5;
+    color: #666;
+}
+
+/* ===================================
+   8. MESSAGGI STATO
+   =================================== */
+
+.no-tasks-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.no-tasks-message i {
+    font-size: 48px;
+    color: #ccc;
+    margin-bottom: 16px;
+}
+
+.no-tasks-message p {
+    font-size: 16px;
+    margin: 0;
+}
+
+/* ===================================
+   9. LOADING INDICATOR
+   =================================== */
+
+.tasks-loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+}
+
+.tasks-loading i {
+    font-size: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ===================================
+   10. SCADENZA EVIDENZIATA
+   =================================== */
+
+.task-due-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.task-due-date.overdue {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.task-due-date.today {
+    background-color: #fff3e0;
+    color: #e65100;
+}
+
+.task-due-date.upcoming {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+/* ===================================
+   11. ANIMAZIONI
+   =================================== */
+
+.task-card {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===================================
+   12. ACCESSIBILITÀ
+   =================================== */
+
+.task-action-btn:focus {
+    outline: 2px solid #2196F3;
+    outline-offset: 2px;
+}
+
+/* ===================================
+   13. RESPONSIVE FINE-TUNING
+   =================================== */
+
+/* Per schermi molto piccoli */
+@media (max-width: 360px) {
+    .task-card {
+        padding: 12px;
+    }
+    
+    .task-card-title {
+        font-size: 15px;
+    }
+    
+    .task-action-btn {
+        min-width: 70px;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+}
+
+/* Per schermi medi (tablet portrait) */
+@media (min-width: 768px) and (max-width: 991px) {
+    .tasks-mobile-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding: 16px;
+    }
+    
+    .task-card {
+        margin-bottom: 0;
+    }
+}
