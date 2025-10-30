@@ -16,7 +16,10 @@
     <!-- Custom CSS -->
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
     <!-- Responsive CSS -->
-    <link href="{{ asset('css/responsive.css') }}" rel="stylesheet">
+<link href="{{ asset('css/responsive.css') }}" rel="stylesheet">
+<!-- Mobile No Boxes CSS - NUOVO -->
+<link href="{{ asset('css/mobile-no-boxes.css') }}" rel="stylesheet">
+
     
     @stack('styles')
 </head>

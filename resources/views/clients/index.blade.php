@@ -2,8 +2,13 @@
 
 @section('title', 'Gestione Clienti')
 
+@push('styles')
+<link href="{{ asset('css/clients-mobile.css') }}" rel="stylesheet">
+@endpush
+
 @section('content')
 <div class="container-fluid">
+    <!-- Header con titolo e pulsanti -->
     <div class="row mb-4">
         <div class="col-md-6">
             <h1>Clienti</h1>
@@ -15,269 +20,214 @@
         </div>
     </div>
 
-    <!-- Filtri -->
+    <!-- Card filtri (nascosta su mobile) -->
     <div class="card mb-4">
         <div class="card-header">
             <h5>Filtri</h5>
         </div>
         <div class="card-body">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label for="filterCreatedFrom">Origine</label>
-                        <select id="filterCreatedFrom" class="form-select">
-                            <option value="">Tutti i clienti</option>
-                            <option value="normal">Creati normalmente</option>
-                            <option value="tasks">Creati da Tasks</option>
-                        </select>
+            <!-- Filtri qui (da implementare) -->
+            <form method="GET" action="{{ route('clients.index') }}">
+                <div class="row">
+                    <div class="col-md-4">
+                        <input type="text" name="search" class="form-control" placeholder="Cerca cliente..." value="{{ request('search') }}">
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label for="filterBudget">Budget</label>
-                        <select id="filterBudget" class="form-select">
-                            <option value="">Tutti i budget</option>
-                            <option value="low">Meno di 5.000€</option>
-                            <option value="medium">5.000€ - 20.000€</option>
-                            <option value="high">Oltre 20.000€</option>
-                        </select>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Cerca
+                        </button>
+                        <a href="{{ route('clients.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Reset
+                        </a>
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label for="searchClient">Cerca</label>
-                        <input type="text" id="searchClient" class="form-control" placeholder="Nome cliente...">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h5>Elenco Clienti</h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped" id="clientsTable">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Budget</th>
-                            <th>Budget Utilizzato</th>
-                            <th>Progetti</th>
-                            <th>Origine</th>
-                            <th>Stato</th>
-                            <th>Azioni</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($clients as $client)
-                        <tr data-created-from="{{ $client->created_from_tasks ? 'tasks' : 'normal' }}" 
-                            data-budget="{{ $client->budget }}" 
-                            data-name="{{ strtolower($client->name) }}">
-                            <td>
-                                <strong>{{ $client->name }}</strong>
-                                @if($client->created_from_tasks)
-                                    <br><small class="text-muted">Creato il {{ $client->tasks_created_at->format('d/m/Y H:i') }}</small>
-                                @endif
-                            </td>
-                            <td>{{ number_format($client->budget, 2) }} €</td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-fill me-2">
-                                        <div class="progress" style="height: 8px;">
-                                            <div class="progress-bar {{ $client->budget_usage_percentage > 90 ? 'bg-danger' : ($client->budget_usage_percentage > 70 ? 'bg-warning' : 'bg-success') }}" 
-                                                 role="progressbar" 
-                                                 style="width: {{ $client->budget_usage_percentage }}%"></div>
-                                        </div>
-                                    </div>
-                                    <small>{{ number_format($client->total_budget_used, 2) }} €</small>
-                                </div>
-                                <small class="text-muted">{{ $client->budget_usage_percentage }}% utilizzato</small>
-                            </td>
-                            <td>
-                                <span class="badge bg-primary">{{ $client->projects_count }}</span>
-                                @if($client->projects_count > 0)
-                                    <br><small class="text-muted">
-                                        <a href="{{ route('projects.index') }}?client={{ $client->id }}">Vedi progetti</a>
-                                    </small>
-                                @endif
-                            </td>
-                            <td>
-                                @if($client->created_from_tasks)
-                                    <span class="badge bg-warning">
-                                        <i class="fas fa-tasks"></i> Da Tasks
-                                    </span>
-                                    <br><small class="text-warning">Da consolidare</small>
-                                @else
-                                    <span class="badge bg-success">
-                                        <i class="fas fa-user-plus"></i> Standard
-                                    </span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($client->created_from_tasks)
-                                    <span class="badge bg-warning">Provvisorio</span>
-                                @else
-                                    @if($client->budget_usage_percentage > 90)
-                                        <span class="badge bg-danger">Budget Critico</span>
-                                    @elseif($client->budget_usage_percentage > 70)
-                                        <span class="badge bg-warning">Budget Attenzione</span>
-                                    @else
-                                        <span class="badge bg-success">Attivo</span>
-                                    @endif
-                                @endif
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{{ route('clients.show', $client->id) }}" class="btn btn-outline-info" title="Visualizza">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{{ route('clients.edit', $client->id) }}" class="btn btn-outline-warning" title="Modifica">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    @if($client->created_from_tasks)
-                                        <button type="button" class="btn btn-outline-success consolidate-btn" 
-                                                data-client-id="{{ $client->id }}" 
-                                                data-client-name="{{ $client->name }}"
-                                                title="Consolida cliente">
-                                            <i class="fas fa-check-circle"></i>
-                                        </button>
-                                    @endif
-                                    @if($client->projects_count == 0)
-                                        <form action="{{ route('clients.destroy', $client->id) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-outline-danger" 
-                                                    onclick="return confirm('Sei sicuro di voler eliminare questo cliente?')"
-                                                    title="Elimina">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
-                                    @endif
-                                </div>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal per consolidare cliente -->
-<div class="modal fade" id="consolidateClientModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Consolida Cliente</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="consolidateClientForm" method="POST">
-                @csrf
-                @method('PATCH')
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i>
-                        <strong>Consolidamento Cliente</strong><br>
-                        Stai per consolidare un cliente creato automaticamente dai tasks. 
-                        Questo lo renderà un cliente "ufficiale" del sistema.
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="consolidate_budget">Budget Definitivo (€)</label>
-                        <input type="number" name="budget" id="consolidate_budget" class="form-control" step="0.01" min="0" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="consolidate_notes">Note</label>
-                        <textarea name="notes" id="consolidate_notes" class="form-control" rows="3" 
-                                  placeholder="Aggiungi informazioni dettagliate sul cliente..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-check"></i> Consolida Cliente
-                    </button>
                 </div>
             </form>
         </div>
     </div>
+
+    <!-- DESKTOP VIEW: Tabella (nascosta su mobile) -->
+    <div class="card table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Nome Cliente</th>
+                    <th>Data Creazione</th>
+                    <th>Budget Totale</th>
+                    <th>Budget Utilizzato</th>
+                    <th>Percentuale</th>
+                    <th>N° Progetti</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($clients as $client)
+                    @php
+                        $budgetUsed = $client->projects->sum('budget_used') ?? 0;
+                        $budgetTotal = $client->budget_total ?? 0;
+                        $budgetPercentage = $budgetTotal > 0 ? round(($budgetUsed / $budgetTotal) * 100, 1) : 0;
+                        $projectsCount = $client->projects->count() ?? 0;
+                        
+                        // Determina la classe CSS per il badge
+                        $badgeClass = 'success';
+                        if ($budgetPercentage >= 90) {
+                            $badgeClass = 'danger';
+                        } elseif ($budgetPercentage >= 75) {
+                            $badgeClass = 'warning';
+                        }
+                    @endphp
+                    <tr>
+                        <td><strong>{{ $client->name }}</strong></td>
+                        <td>{{ $client->created_at->format('d/m/Y') }}</td>
+                        <td>€{{ number_format($budgetTotal, 2, ',', '.') }}</td>
+                        <td>€{{ number_format($budgetUsed, 2, ',', '.') }}</td>
+                        <td>
+                            <span class="badge bg-{{ $badgeClass }}">
+                                {{ $budgetPercentage }}%
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">
+                                {{ $projectsCount }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ route('projects.index') }}?client={{ $client->id }}" 
+                               class="btn btn-sm btn-info" 
+                               title="Vedi Progetti">
+                                <i class="fas fa-folder"></i>
+                            </a>
+                            <a href="{{ route('clients.edit', $client->id) }}" 
+                               class="btn btn-sm btn-warning" 
+                               title="Modifica">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form action="{{ route('clients.destroy', $client->id) }}" 
+                                  method="POST" 
+                                  style="display: inline-block;"
+                                  onsubmit="return confirm('Sei sicuro di voler eliminare questo cliente?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-danger" title="Elimina">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="text-center">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Nessun cliente trovato</p>
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MOBILE VIEW: Card compatte (nascosta su desktop) -->
+    <div class="clients-mobile-view" style="display: none;">
+        <div class="clients-mobile-container">
+            @forelse($clients as $client)
+                @php
+                    $budgetUsed = $client->projects->sum('budget_used') ?? 0;
+                    $budgetTotal = $client->budget_total ?? 0;
+                    $budgetPercentage = $budgetTotal > 0 ? round(($budgetUsed / $budgetTotal) * 100, 1) : 0;
+                    $projectsCount = $client->projects->count() ?? 0;
+                    
+                    // Determina le classi CSS per colori
+                    $percentageClass = '';
+                    $progressClass = '';
+                    if ($budgetPercentage >= 90) {
+                        $percentageClass = 'danger';
+                        $progressClass = 'danger';
+                    } elseif ($budgetPercentage >= 75) {
+                        $percentageClass = 'warning';
+                        $progressClass = 'warning';
+                    }
+                @endphp
+                
+                <div class="client-card">
+                    <!-- Header -->
+                    <div class="client-card-header">
+                        <h3 class="client-card-title">{{ $client->name }}</h3>
+                        <span class="client-created-date">
+                            {{ $client->created_at->format('d/m/Y') }}
+                        </span>
+                    </div>
+
+                    <!-- Informazioni -->
+                    <div class="client-card-info">
+                        <div class="client-info-row">
+                            <i class="fas fa-euro-sign client-info-icon"></i>
+                            <span class="client-info-label">Budget Totale:</span>
+                            <span class="client-info-value budget-total">
+                                €{{ number_format($budgetTotal, 2, ',', '.') }}
+                            </span>
+                        </div>
+                        
+                        <div class="client-info-row">
+                            <i class="fas fa-chart-line client-info-icon"></i>
+                            <span class="client-info-label">Budget Utilizzato:</span>
+                            <span class="client-info-value budget-used {{ $budgetPercentage >= 90 ? 'budget-warning' : '' }}">
+                                €{{ number_format($budgetUsed, 2, ',', '.') }}
+                            </span>
+                        </div>
+                        
+                        <div class="client-info-row">
+                            <i class="fas fa-folder client-info-icon"></i>
+                            <span class="client-info-label">Numero Progetti:</span>
+                            <span class="client-info-value project-count">
+                                {{ $projectsCount }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar Budget -->
+                    <div class="client-budget-section">
+                        <div class="client-budget-header">
+                            <span class="client-budget-label">Utilizzo Budget</span>
+                            <span class="client-budget-percentage {{ $percentageClass }}">
+                                {{ $budgetPercentage }}%
+                            </span>
+                        </div>
+                        <div class="client-progress-bar">
+                            <div class="client-progress-fill {{ $progressClass }}" 
+                                 style="width: {{ min($budgetPercentage, 100) }}%">
+                            </div>
+                        </div>
+                        <div class="client-budget-amounts">
+                            <span>€{{ number_format($budgetUsed, 0, ',', '.') }}</span>
+                            <span>€{{ number_format($budgetTotal, 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Pulsanti azione -->
+                    <div class="client-card-actions">
+                        <a href="{{ route('projects.index') }}?client={{ $client->id }}" 
+                           class="client-action-btn btn-projects">
+                            <i class="fas fa-folder"></i> Progetti ({{ $projectsCount }})
+                        </a>
+                        <a href="{{ route('clients.edit', $client->id) }}" 
+                           class="client-action-btn btn-edit">
+                            <i class="fas fa-edit"></i> Modifica
+                        </a>
+                    </div>
+                </div>
+            @empty
+                <div class="no-clients-message">
+                    <i class="fas fa-inbox"></i>
+                    <p>Nessun cliente trovato</p>
+                </div>
+            @endforelse
+        </div>
+    </div>
+
+    <!-- Paginazione -->
+    @if(method_exists($clients, 'links'))
+        <div class="mt-4">
+            {{ $clients->links() }}
+        </div>
+    @endif
 </div>
 @endsection
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Filtri
-    const filterCreatedFrom = document.getElementById('filterCreatedFrom');
-    const filterBudget = document.getElementById('filterBudget');
-    const searchClient = document.getElementById('searchClient');
-    const tableRows = document.querySelectorAll('#clientsTable tbody tr');
-
-    function applyFilters() {
-        const createdFromFilter = filterCreatedFrom.value;
-        const budgetFilter = filterBudget.value;
-        const searchTerm = searchClient.value.toLowerCase();
-
-        tableRows.forEach(row => {
-            let show = true;
-
-            // Filtro origine
-            if (createdFromFilter && row.dataset.createdFrom !== createdFromFilter) {
-                show = false;
-            }
-
-            // Filtro budget
-            if (budgetFilter && show) {
-                const budget = parseFloat(row.dataset.budget);
-                switch(budgetFilter) {
-                    case 'low':
-                        if (budget >= 5000) show = false;
-                        break;
-                    case 'medium':
-                        if (budget < 5000 || budget > 20000) show = false;
-                        break;
-                    case 'high':
-                        if (budget <= 20000) show = false;
-                        break;
-                }
-            }
-
-            // Filtro ricerca
-            if (searchTerm && show) {
-                if (!row.dataset.name.includes(searchTerm)) {
-                    show = false;
-                }
-            }
-
-            row.style.display = show ? '' : 'none';
-        });
-    }
-
-    filterCreatedFrom.addEventListener('change', applyFilters);
-    filterBudget.addEventListener('change', applyFilters);
-    searchClient.addEventListener('input', applyFilters);
-
-    // Gestione consolidamento cliente
-    const consolidateButtons = document.querySelectorAll('.consolidate-btn');
-    const consolidateModal = new bootstrap.Modal(document.getElementById('consolidateClientModal'));
-    const consolidateForm = document.getElementById('consolidateClientForm');
-
-    consolidateButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const clientId = this.dataset.clientId;
-            const clientName = this.dataset.clientName;
-            
-            document.querySelector('#consolidateClientModal .modal-title').textContent = `Consolida Cliente: ${clientName}`;
-            consolidateForm.action = `/clients/${clientId}/consolidate`;
-            
-            consolidateModal.show();
-        });
-    });
-});
-</script>
-@endpush
