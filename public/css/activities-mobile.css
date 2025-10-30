@@ -8,7 +8,7 @@
    =================================== */
 
 .activities-mobile-container {
-    padding: 10px;
+    padding: 0;
     background-color: #f5f6fa;
 }
 
@@ -36,12 +36,13 @@
 
 .activity-card {
     background: white;
-    border-radius: 12px;
+    border-radius: 0;  /* CAMBIA da 12px a 0 per card squadrate */
     padding: 16px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1px;  /* CAMBIA da 12px a 1px - quasi nessuno spazio */
+    box-shadow: none;  /* CAMBIA - elimina completamente l'ombra */
+    border-bottom: 1px solid #e0e0e0;  /* AGGIUNGI - linea sottile di separazione */
     position: relative;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s;
 }
 
 .activity-card:active {

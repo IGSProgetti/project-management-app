@@ -202,43 +202,57 @@
                                 </div>
 
                                 <!-- Informazioni Principali -->
-                                <div class="activity-card-info">
-                                    <div class="activity-info-row">
-                                        <i class="fas fa-project-diagram activity-info-icon"></i>
-                                        <span class="activity-info-label">Progetto:</span>
-                                        <span class="activity-info-value">{{ $activity->project->name }}</span>
-                                    </div>
-                                    
-                                    @if($activity->area)
-                                    <div class="activity-info-row">
-                                        <i class="fas fa-layer-group activity-info-icon"></i>
-                                        <span class="activity-info-label">Area:</span>
-                                        <span class="activity-area-badge">
-                                            <i class="fas fa-folder"></i>
-                                            {{ $activity->area->name }}
-                                        </span>
-                                    </div>
-                                    @endif
-                                    
-                                    <div class="activity-info-row">
-                                        <i class="fas fa-clock activity-info-icon"></i>
-                                        <span class="activity-info-label">Tipo Ore:</span>
-                                        <span class="hours-type-badge hours-type-{{ $activity->hours_type }}">
-                                            {{ $activity->hours_type == 'standard' ? '⏱️ Standard' : '⚡ Extra' }}
-                                        </span>
-                                    </div>
-                                    
-                                    @if($activity->due_date)
-                                    <div class="activity-info-row">
-                                        <i class="fas fa-calendar activity-info-icon"></i>
-                                        <span class="activity-info-label">Scadenza:</span>
-                                        <span class="activity-due-date {{ $dueDateClass }}">
-                                            <i class="fas fa-clock"></i>
-                                            {{ $activity->due_date->format('d/m/Y') }}
-                                        </span>
-                                    </div>
-                                    @endif
-                                </div>
+<div class="activity-card-info">
+    <!-- CLIENTE -->
+    @if($activity->project)
+        @if(isset($activity->project->customer))
+        <div class="activity-info-row">
+            <i class="fas fa-building activity-info-icon"></i>
+            <span class="activity-info-label">Cliente:</span>
+            <span class="activity-info-value">{{ $activity->project->customer->name }}</span>
+        </div>
+        @elseif(isset($activity->project->client))
+        <div class="activity-info-row">
+            <i class="fas fa-building activity-info-icon"></i>
+            <span class="activity-info-label">Cliente:</span>
+            <span class="activity-info-value">{{ $activity->project->client->name }}</span>
+        </div>
+        @elseif(isset($activity->project->customer_name))
+        <div class="activity-info-row">
+            <i class="fas fa-building activity-info-icon"></i>
+            <span class="activity-info-label">Cliente:</span>
+            <span class="activity-info-value">{{ $activity->project->customer_name }}</span>
+        </div>
+        @endif
+    @endif
+    
+    <!-- PROGETTO -->
+    <div class="activity-info-row">
+        <i class="fas fa-project-diagram activity-info-icon"></i>
+        <span class="activity-info-label">Progetto:</span>
+        <span class="activity-info-value">{{ $activity->project->name }}</span>
+    </div>
+    
+    <!-- AREA -->
+    @if($activity->area)
+    <div class="activity-info-row">
+        <i class="fas fa-layer-group activity-info-icon"></i>
+        <span class="activity-info-label">Area:</span>
+        <span class="activity-area-badge">
+            <i class="fas fa-folder"></i>
+            {{ $activity->area->name }}
+        </span>
+    </div>
+    @endif
+    
+    <!-- TIPO ORE -->
+    <div class="activity-info-row">
+        <i class="fas fa-clock activity-info-icon"></i>
+        <span class="activity-info-label">Tipo Ore:</span>
+        <span class="hours-type-badge hours-type-{{ $activity->hours_type }}">
+            {{ $activity->hours_type == 'standard' ? '⏱️ Standard' : '⚡ Extra' }}
+        </span>
+    </div>
 
                                 <!-- Sezione Risorse -->
                                 @if($activity->has_multiple_resources && $activity->resources->count() > 0)
